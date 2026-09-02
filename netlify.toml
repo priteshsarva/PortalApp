@@ -1,0 +1,9 @@
+# Netlify build config for the SPP portal SPA. Env vars (VITE_API_URL,
+# VITE_STORE_BASE_URL) are set in the Netlify UI, not here — they're inlined at
+# build time. SPA routing is handled by public/_redirects.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
