@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Globe, Copy, Check, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Globe, Copy, Check, Plus, Trash2, ChevronDown, ChevronRight, Download } from "lucide-react";
 import { api } from "../api.js";
 import { C, PageHead, Card, Btn, Badge, Spinner, ErrorNote, Empty, Modal, Field, inputStyle, fmtDate, SearchSelect } from "../ui.jsx";
+import pluginZip, { PLUGIN_FILE } from "../lib/plugin.js";
 
 export default function MySites() {
   const [enr, setEnr] = useState(null);
@@ -30,7 +31,12 @@ export default function MySites() {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <PageHead title="WordPress plugin" sub="Connect your WordPress/WooCommerce site to our products with a plugin key. Each site gets its own key and invoice." />
-        <Btn tone="lime" onClick={() => setAddingShop(true)}><Plus size={15} style={{ verticalAlign: "-2px" }} /> Request new key for WordPress plugin</Btn>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a href={pluginZip} download={PLUGIN_FILE} style={{ textDecoration: "none" }}>
+            <Btn tone="ghost"><Download size={15} style={{ verticalAlign: "-3px", marginRight: 4 }} />Download plugin</Btn>
+          </a>
+          <Btn tone="lime" onClick={() => setAddingShop(true)}><Plus size={15} style={{ verticalAlign: "-2px" }} /> Request new key for WordPress plugin</Btn>
+        </div>
       </div>
       {addingShop && <AddShopModal onClose={() => setAddingShop(false)} onDone={() => { setAddingShop(false); load(); }} />}
       {enr.length === 0 ? <Card><Empty msg="No sites yet. Add one to get a key." /></Card> : (
