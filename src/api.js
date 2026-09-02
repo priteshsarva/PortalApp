@@ -148,6 +148,8 @@ export const api = {
 
   // ---- admin: hosted storefronts ----
   adminHostedSites: () => req("/portal/admin/hosted-sites"),
+  adminAnalytics: (params) => req(`/portal/admin/analytics${params ? `?${new URLSearchParams(params)}` : ""}`),
+  adminSiteAnalytics: (id, params) => req(`/portal/admin/hosted-sites/${id}/analytics${params ? `?${new URLSearchParams(params)}` : ""}`),
   adminUpdateHostedSite: (id, body) => req(`/portal/admin/hosted-sites/${id}`, { method: "PATCH", body }),
   adminDeleteHostedSite: (id) => req(`/portal/admin/hosted-sites/${id}`, { method: "DELETE" }),
   adminOrders: (params) => req(`/portal/admin/orders${params ? `?${new URLSearchParams(params)}` : ""}`),

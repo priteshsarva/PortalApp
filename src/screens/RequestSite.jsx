@@ -39,7 +39,7 @@ export default function RequestSite() {
 
   return (
     <div>
-      <PageHead title="Request additional sites (source)" sub="Ask us to add a new source site to your account. Tie it to one of your stores and it attaches automatically once approved." />
+      <PageHead title="Request new source" sub="Ask us to add a new product source (a supplier site) to your account. Link it to one of your stores and it's added automatically once approved." />
       <Card style={{ marginBottom: 18 }}>
         <ErrorNote error={error} />
         <form onSubmit={submit}>

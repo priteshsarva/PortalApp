@@ -28,9 +28,9 @@ export default function MySites() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <PageHead title="My sites" sub="Each shop has its own key and invoice, and can pull sources from any category." />
-        <Btn tone="lime" onClick={() => setAddingShop(true)}><Plus size={15} style={{ verticalAlign: "-2px" }} /> Add shop</Btn>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <PageHead title="WordPress plugin" sub="Connect your WordPress/WooCommerce site to our products with a plugin key. Each site gets its own key and invoice." />
+        <Btn tone="lime" onClick={() => setAddingShop(true)}><Plus size={15} style={{ verticalAlign: "-2px" }} /> Request new key for WordPress plugin</Btn>
       </div>
       {addingShop && <AddShopModal onClose={() => setAddingShop(false)} onDone={() => { setAddingShop(false); load(); }} />}
       {enr.length === 0 ? <Card><Empty msg="No sites yet. Add one to get a key." /></Card> : (

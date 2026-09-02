@@ -26,35 +26,35 @@ import BrandMapping from "./screens/BrandMapping.jsx";
 import AdminHostedSites from "./screens/AdminHostedSites.jsx";
 import AdminOrders from "./screens/AdminOrders.jsx";
 import AdminPlans from "./screens/AdminPlans.jsx";
+import AdminAnalytics from "./screens/AdminAnalytics.jsx";
 
 const clientNav = [
-  ["dashboard", "Dashboard", LayoutDashboard],
-  ["sites", "My sites", Globe],
-  ["storefront", "My storefront", LayoutTemplate],
+  ["dashboard", "Home", LayoutDashboard],
+  ["storefront", "My online store", LayoutTemplate],
   ["orders", "Orders", ClipboardList],
-  ["request", "Request a site", PlusCircle],
-  ["plugin", "Plugin setup", Plug],
-  ["analytics", "Store analytics", BarChart3],
-  ["search", "Catalogue search", Search],
-  ["promote", "Promote", Megaphone],
-  ["wholesale", "Sell wholesale", Store],
+  ["request", "Request new source", PlusCircle],
+  ["search", "Browse products", Search],
+  ["sites", "WordPress plugin", Globe],
+  ["plugin", "Set up plugin", Plug],
   ["billing", "Billing", Receipt],
   ["notifications", "Notifications", Bell],
+  // Hidden until built: "analytics" (per-store analytics live on each store),
+  // "promote" (ad marketplace), "wholesale" (wholesale listings).
 ];
 const adminNav = [
-  ["queue", "Approval queue", Inbox],
-  ["sources", "Sources", Database],
-  ["enrollAdmin", "Enrollments", ShieldCheck],
-  ["brandMap", "Brand mapping", Tags],
-  ["hostedSites", "Storefronts", LayoutTemplate],
-  ["hostedOrders", "Storefront orders", ClipboardList],
+  ["queue", "Approvals", Inbox],
+  ["analytics", "Analytics", BarChart3],
+  ["hostedSites", "Online stores", LayoutTemplate],
+  ["hostedOrders", "Store orders", ClipboardList],
   ["plans", "Plans", Receipt],
   ["users", "Clients", Users],
-  ["email", "Email (SMTP)", Mail],
+  ["sources", "Product sources", Database],
+  ["brandMap", "Brand names", Tags],
+  ["enrollAdmin", "Plugin sign-ups", ShieldCheck],
+  ["email", "Email settings", Mail],
   ["payments", "Payments", CreditCard],
-  ["announce", "Announcements", Megaphone],
-  ["audit", "Audit log", ScrollText],
   ["notifications", "Notifications", Bell],
+  // Hidden until built: "announce" (announcements), "audit" (audit-log viewer).
 ];
 
 export default function App() {
@@ -101,10 +101,7 @@ export default function App() {
         case "orders": return <MyOrders />;
         case "request": return <RequestSite />;
         case "plugin": return <PluginSetup />;
-        case "analytics": return <Stub title="Store analytics" note="Needs the plugin page-view tracker + an analytics endpoint." />;
         case "search": return <CatalogueSearch />;
-        case "promote": return <Stub title="Promote" note="Ad marketplace — not built yet." />;
-        case "wholesale": return <Stub title="Sell wholesale" note="Phase 2 — wholesale listings." />;
         case "billing": return <Billing />;
         case "notifications": return <Notifications />;
         default: return null;
@@ -112,6 +109,7 @@ export default function App() {
     }
     switch (nav) {
       case "queue": return <AdminQueue />;
+      case "analytics": return <AdminAnalytics />;
       case "sources": return <AdminSources />;
       case "enrollAdmin": return <AdminEnrollments />;
       case "brandMap": return <BrandMapping />;
@@ -121,8 +119,6 @@ export default function App() {
       case "users": return <AdminClients />;
       case "email": return <AdminEmailSettings />;
       case "payments": return <AdminPaymentSettings />;
-      case "announce": return <Stub title="Announcements" note="Needs an announcements endpoint." />;
-      case "audit": return <Stub title="Audit log" note="The audit_log table exists; needs a read endpoint." />;
       case "notifications": return <Notifications />;
       default: return null;
     }

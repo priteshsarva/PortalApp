@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { ExternalLink, Plus, ArrowLeft, Search, ArrowRight } from "lucide-react";
 import { api } from "../api.js";
 import { C, PageHead, Card, Btn, Badge, Field, inputStyle, Spinner, ErrorNote, Empty, Modal, fmtDate, storeUrl, useIsMobile } from "../ui.jsx";
+import AnalyticsView, { exportAnalyticsCsv } from "../components/AnalyticsView.jsx";
 
 const ORDER_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
 
@@ -1353,11 +1354,9 @@ function SettingsPanel({ siteId }) {
 }
 
 // ---- analytics ---------------------------------------------------------------
-const inr = (n) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
-const num = (n) => (Number(n) || 0).toLocaleString("en-IN");
-
+// One store's analytics — range picker + CSV/PDF export around the shared view.
 function AnalyticsPanel({ site }) {
-  const RANGES = [{ k: "7", label: "7d" }, { k: "30", label: "30d" }, { k: "90", label: "90d" }];
+  const RANGES = [{ k: "7", label: "7 days" }, { k: "30", label: "30 days" }, { k: "90", label: "90 days" }];
   const [days, setDays] = useState("30");
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -1373,155 +1372,24 @@ function AnalyticsPanel({ site }) {
     api.hostedSiteAnalytics(site.id, range).then(setData).catch(setError);
   }, [site.id, range.from, range.to]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function exportCsv() {
-    if (!data) return;
-    const rows = [
-      ["Report", site.store_name || site.slug],
-      ["Range", `${data.range.from} to ${data.range.to}`],
-      [],
-      ["KPI", "Value"],
-      ["Revenue", data.kpis.revenue], ["Net revenue", data.kpis.net_revenue],
-      ["Orders", data.kpis.orders], ["Units", data.kpis.units], ["AOV", data.kpis.aov],
-      ["Sessions", data.kpis.sessions], ["Pageviews", data.kpis.pageviews],
-      ["Conversion %", data.kpis.conversion_rate], ["Cancelled", data.kpis.cancelled],
-      [],
-      ["Funnel", "Count"],
-      ["Product views", data.funnel.view_item], ["Add to cart", data.funnel.add_to_cart],
-      ["Begin checkout", data.funnel.begin_checkout], ["Purchases", data.funnel.purchase],
-      [],
-      ["Date", "Revenue", "Orders", "Sessions"],
-      ...data.series.map((r) => [r.d, r.revenue, r.orders, r.sessions]),
-      [],
-      ["Top product", "Units", "Revenue", "Orders"],
-      ...data.top_products.map((p) => [p.name, p.units, p.revenue, p.orders]),
-    ];
-    const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${site.slug}-analytics-${data.range.from}_${data.range.to}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>Analytics</div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <div style={{ fontWeight: 700, fontSize: 15 }}>Sales &amp; visitors</div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           {RANGES.map((r) => (
             <button key={r.k} onClick={() => setDays(r.k)}
               style={{ border: days === r.k ? `1px solid ${C.ink}` : "1px solid #d4d9e3", background: days === r.k ? C.ink : "#fff", color: days === r.k ? "#fff" : "#42505f", padding: "4px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer" }}>
               {r.label}
             </button>
           ))}
-          <Btn tone="ghost" small onClick={exportCsv} disabled={!data}>Export CSV</Btn>
-          <Btn tone="ghost" small onClick={() => window.print()} disabled={!data}>PDF</Btn>
+          <Btn tone="ghost" small onClick={() => data && exportAnalyticsCsv(data, site.slug)} disabled={!data}>Download CSV</Btn>
+          <Btn tone="ghost" small onClick={() => window.print()} disabled={!data}>Save PDF</Btn>
         </div>
       </div>
-
       <ErrorNote error={error} />
-      {!data ? <Spinner /> : (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 18 }}>
-            <Stat label="Revenue" value={inr(data.kpis.revenue)} sub={`${inr(data.kpis.net_revenue)} net`} />
-            <Stat label="Orders" value={num(data.kpis.orders)} sub={`${num(data.kpis.units)} units`} />
-            <Stat label="Avg order" value={inr(data.kpis.aov)} />
-            <Stat label="Sessions" value={num(data.kpis.sessions)} sub={`${num(data.kpis.pageviews)} views`} />
-            <Stat label="Conversion" value={`${data.kpis.conversion_rate}%`} />
-            <Stat label="Cancelled" value={num(data.kpis.cancelled)} />
-          </div>
-
-          <SeriesChart series={data.series} />
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18, marginTop: 18 }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Funnel</div>
-              <Funnel funnel={data.funnel} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Order status</div>
-              {data.status_breakdown.length === 0
-                ? <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>No orders in range.</div>
-                : data.status_breakdown.map((s) => (
-                  <div key={s.status} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0", textTransform: "capitalize" }}>
-                    <span>{s.status}</span><span style={{ color: "#6b7688" }}>{num(s.count)} · {inr(s.total)}</span>
-                  </div>
-                ))}
-            </div>
-          </div>
-
-          <div style={{ fontWeight: 600, fontSize: 13, margin: "18px 0 8px" }}>Top products</div>
-          {data.top_products.length === 0
-            ? <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>No sales in range.</div>
-            : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {data.top_products.map((p) => (
-                  <div key={`${p.db_name}-${p.product_id}`} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, fontSize: 12.5, padding: "4px 0", borderBottom: "1px solid #f0f2f6" }}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                    <span style={{ color: "#6b7688" }}>{num(p.units)} sold</span>
-                    <span style={{ fontWeight: 600 }}>{inr(p.revenue)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-        </>
-      )}
+      {!data ? <Spinner /> : <AnalyticsView data={data} />}
     </Card>
-  );
-}
-
-function Stat({ label, value, sub }) {
-  return (
-    <div style={{ border: "1px solid #e6e9f0", borderRadius: 10, padding: "10px 12px" }}>
-      <div style={{ fontSize: 11, color: "#8a93a3", marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#1b2230" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#9aa3b2", marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
-
-// Revenue bars with a session line, no charting dep. Uses the returned series
-// (already spans the selected range).
-function SeriesChart({ series }) {
-  if (!series.length) return <div style={{ fontSize: 12.5, color: "#9aa3b2", padding: "16px 0" }}>No activity in this range yet.</div>;
-  const maxRev = Math.max(1, ...series.map((r) => Number(r.revenue)));
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 40 ? 1 : 3, height: 130 }}>
-        {series.map((b) => (
-          <div key={b.d} title={`${b.d}: ${inr(b.revenue)} · ${b.orders} orders · ${b.sessions} sessions`}
-            style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", height: "100%" }}>
-            <div style={{ width: "100%", height: `${(Number(b.revenue) / maxRev) * 100}%`, minHeight: Number(b.revenue) ? 3 : 0, background: C.lime, borderRadius: "3px 3px 0 0" }} />
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize: 10.5, color: "#9aa3b2", marginTop: 4, textAlign: "center" }}>Daily revenue — hover a bar for orders &amp; sessions</div>
-    </div>
-  );
-}
-
-function Funnel({ funnel }) {
-  const steps = [
-    { label: "Product views", n: funnel.view_item },
-    { label: "Add to cart", n: funnel.add_to_cart },
-    { label: "Begin checkout", n: funnel.begin_checkout },
-    { label: "Purchases", n: funnel.purchase },
-  ];
-  const max = Math.max(1, ...steps.map((s) => s.n));
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {steps.map((s) => (
-        <div key={s.label}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-            <span>{s.label}</span><span style={{ color: "#6b7688" }}>{num(s.n)}</span>
-          </div>
-          <div style={{ height: 8, background: "#eef1f6", borderRadius: 4 }}>
-            <div style={{ width: `${(s.n / max) * 100}%`, height: "100%", background: C.ink, borderRadius: 4 }} />
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
