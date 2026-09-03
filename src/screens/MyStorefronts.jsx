@@ -1080,6 +1080,7 @@ function HomepagePresetPanel({ site }) {
   // is the shoe-first athletic template.
   const COMPONENT_TEMPLATES = [
     { id: "original", name: "Original (multi-category)", description: "Best-sellers rail per category + a mixed All-products rail. Shows every category you sell. Recommended.", section_count: "auto" },
+    { id: "atelier", name: "Atelier (editorial / fashion)", description: "Premium black-and-white fashion-magazine look — full-screen campaign hero, category cards, editorial collage, testimonial, marquee. Best for clothing & lifestyle brands.", section_count: "auto" },
     { id: "velocity", name: "Velocity (athletic / shoes)", description: "High-energy neon + crimson, floating shoe shots, men's/women's selector, tech breakdown. Built shoes-first — best for footwear stores.", section_count: "auto" },
     { id: "chrono", name: "Chrono (luxe / watches)", description: "Same bold layout as Velocity in a gold + deep-blue palette, built watches-first — floating watch shots, movement/crystal tech breakdown. Best for watch stores.", section_count: "auto" },
   ];
