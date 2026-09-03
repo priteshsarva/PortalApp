@@ -27,6 +27,7 @@ import AdminHostedSites from "./screens/AdminHostedSites.jsx";
 import AdminOrders from "./screens/AdminOrders.jsx";
 import AdminPlans from "./screens/AdminPlans.jsx";
 import AdminAnalytics from "./screens/AdminAnalytics.jsx";
+import WelcomeTour from "./Tour.jsx";
 
 const clientNav = [
   ["dashboard", "Home", LayoutDashboard],
@@ -202,6 +203,7 @@ export default function App() {
         </div>
       )}
       {role === "client" && <ProSetupPopup />}
+      {role === "client" && <WelcomeTour setNav={setNav} />}
     </div>
   );
 }

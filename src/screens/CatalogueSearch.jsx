@@ -61,7 +61,7 @@ export default function CatalogueSearch() {
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
+          <div style={{ position: "relative", flex: 1, minWidth: 220 }} data-tour="catalogue-search">
             <div style={lbl}>Search</div>
             <Search size={15} style={{ position: "absolute", left: 11, top: 30, color: "#9aa3b2" }} />
             <input style={{ ...inputStyle, paddingLeft: 32 }} placeholder="Product name or brand…" value={q} onChange={(e) => setQ(e.target.value)} />

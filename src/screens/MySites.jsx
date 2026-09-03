@@ -32,10 +32,10 @@ export default function MySites() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <PageHead title="WordPress plugin" sub="Connect your WordPress/WooCommerce site to our products with a plugin key. Each site gets its own key and invoice." />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <a href={pluginZip} download={PLUGIN_FILE} style={{ textDecoration: "none" }}>
+          <a href={pluginZip} download={PLUGIN_FILE} style={{ textDecoration: "none" }} data-tour="download-plugin">
             <Btn tone="ghost"><Download size={15} style={{ verticalAlign: "-3px", marginRight: 4 }} />Download plugin</Btn>
           </a>
-          <Btn tone="lime" onClick={() => setAddingShop(true)}><Plus size={15} style={{ verticalAlign: "-2px" }} /> Request new key for WordPress plugin</Btn>
+          <span data-tour="request-key"><Btn tone="lime" onClick={() => setAddingShop(true)}><Plus size={15} style={{ verticalAlign: "-2px" }} /> Request new key for WordPress plugin</Btn></span>
         </div>
       </div>
       {addingShop && <AddShopModal onClose={() => setAddingShop(false)} onDone={() => { setAddingShop(false); load(); }} />}

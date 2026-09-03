@@ -66,7 +66,7 @@ export default function MyStorefronts() {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <PageHead title="My storefront" sub="A hosted storefront that shows your own branding and your selected products. Buyers check out via WhatsApp." />
-        <Btn tone="lime" onClick={() => setCreating(true)}><Plus size={15} style={{ verticalAlign: "-2px" }} /> New storefront</Btn>
+        <span data-tour="new-store"><Btn tone="lime" onClick={() => setCreating(true)}><Plus size={15} style={{ verticalAlign: "-2px" }} /> New storefront</Btn></span>
       </div>
       {creating && <CreateSiteModal onClose={() => setCreating(false)} onDone={openNewSite} />}
 

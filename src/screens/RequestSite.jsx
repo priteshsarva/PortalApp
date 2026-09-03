@@ -42,7 +42,7 @@ export default function RequestSite() {
       <PageHead title="Request new source" sub="Ask us to add a new product source (a supplier site) to your account. Link it to one of your stores and it's added automatically once approved." />
       <Card style={{ marginBottom: 18 }}>
         <ErrorNote error={error} />
-        <form onSubmit={submit}>
+        <form onSubmit={submit} data-tour="request-form">
           <Field label="For which store?">
             <select style={inputStyle} value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)}>
               <option value="">— not tied to a store —</option>
