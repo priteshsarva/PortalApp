@@ -1047,14 +1047,26 @@ function HomepagePresetPanel({ site }) {
   const [applied, setApplied] = useState(null);
   const [error, setError] = useState(null);
   const [previewId, setPreviewId] = useState(null); // layout shown in the live preview frame
+  const [theme, setTheme] = useState(null);         // the store's saved theme (for the palette toggle)
+  const [savingPalette, setSavingPalette] = useState(false);
+  const paletteMode = theme?.palette_mode === "default" ? "default" : "brand";
 
   useEffect(() => {
     // load the presets AND which one this site currently has applied, so the
     // selection survives a page refresh (was resetting to none before).
     Promise.all([api.hostedSitePresets(), api.hostedSiteSettings(siteId)])
-      .then(([pr, s]) => { setPresets(pr.presets || []); setApplied(s.settings?.preset || null); })
+      .then(([pr, s]) => { setPresets(pr.presets || []); setApplied(s.settings?.preset || null); setTheme(s.settings?.theme || {}); })
       .catch(setError);
   }, [siteId]);
+
+  async function setPalette(mode) {
+    if (mode === paletteMode) return;
+    setSavingPalette(true); setError(null);
+    const next = { ...(theme || {}), palette_mode: mode };
+    try { await api.saveHostedSiteSettings(siteId, { theme: next }); setTheme(next); }
+    catch (e) { setError(e); }
+    finally { setSavingPalette(false); }
+  }
 
   // storefront URL with a non-persisted ?preset override, for the live preview.
   const previewUrl = (id) => {
@@ -1090,8 +1102,25 @@ function HomepagePresetPanel({ site }) {
       <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Homepage layout</div>
       <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 14 }}>
         Pick a ready-made layout for your storefront's home page — hero, category grid, product rails, testimonials.
-        Applies immediately. Your branding (name, logo, colours, hero image) fills in automatically.
+        Applies immediately. Your branding (name, logo, hero image) fills in automatically.
       </div>
+
+      {/* colour source: the vendor's brand palette vs the layout's own default palette */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16, padding: "10px 12px", background: "#f7f8fb", borderRadius: 10 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#42505f" }}>Colours</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          {[["brand", "My brand palette"], ["default", "Layout default"]].map(([mode, label]) => (
+            <button key={mode} disabled={savingPalette} onClick={() => setPalette(mode)}
+              style={{ border: paletteMode === mode ? `1px solid ${C.ink}` : "1px solid #d4d9e3", background: paletteMode === mode ? C.ink : "#fff", color: paletteMode === mode ? "#fff" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <span style={{ fontSize: 11.5, color: "#9aa3b2" }}>
+          {paletteMode === "brand" ? "Uses your brand colours (from Branding)." : "Uses this layout's own colour palette."}
+        </span>
+      </div>
+
       <ErrorNote error={error} />
       {!presets ? <Spinner msg="Loading presets…" /> : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
