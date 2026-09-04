@@ -39,8 +39,8 @@ export default function MySites() {
         </div>
       </div>
       {addingShop && <AddShopModal onClose={() => setAddingShop(false)} onDone={() => { setAddingShop(false); load(); }} />}
-      {enr.length === 0 ? <Card><Empty msg="No sites yet. Add one to get a key." /></Card> : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {enr.length === 0 ? <div data-tour="plugin-keys"><Card><Empty msg="No sites yet. Add one to get a key." /></Card></div> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }} data-tour="plugin-keys">
           {enr.map((e) => (
             <Card key={e.id} style={{ padding: 0, overflow: "hidden" }}>
               <div style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>

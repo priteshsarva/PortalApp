@@ -44,13 +44,13 @@ export default function RequestSite() {
         <ErrorNote error={error} />
         <form onSubmit={submit} data-tour="request-form">
           <Field label="For which store?">
-            <select style={inputStyle} value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)}>
+            <select data-tour="request-store" style={inputStyle} value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)}>
               <option value="">— not tied to a store —</option>
               {sites.map((s) => <option key={s.id} value={s.id}>{s.domain}{s.category ? ` (${s.category})` : ""}</option>)}
             </select>
           </Field>
           <Field label="Site URL">
-            <input style={inputStyle} required value={site} onChange={(e) => setSite(e.target.value)} placeholder="https://newsource.cartpe.in/" />
+            <input data-tour="request-url" style={inputStyle} required value={site} onChange={(e) => setSite(e.target.value)} placeholder="https://newsource.cartpe.in/" />
           </Field>
           <Field label="Category (anything — type your own or pick one)">
             <SearchSelect
@@ -61,7 +61,7 @@ export default function RequestSite() {
               options={knownCats.map((c) => ({ value: c, label: c }))}
             />
           </Field>
-          <Btn type="submit" tone="lime" disabled={busy || !site.trim() || !category.trim()}>{busy ? "Submitting…" : "Submit request"}</Btn>
+          <span data-tour="request-submit"><Btn type="submit" tone="lime" disabled={busy || !site.trim() || !category.trim()}>{busy ? "Submitting…" : "Submit request"}</Btn></span>
         </form>
       </Card>
 

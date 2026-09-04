@@ -11,34 +11,42 @@ const SEEN_KEY = "spp_tour_dismissed";
 
 // Each choice navigates to a section, then spotlights its key actions. Steps
 // target on-screen buttons (tagged data-tour="…"), so it works on mobile too.
+// Each choice → a section + an ordered, step-by-step walkthrough. Steps whose
+// target isn't on the page (e.g. a store card when you have no stores yet) are
+// skipped automatically, so the tour adapts to the account's state.
 const CHOICES = [
   {
     key: "storefront", emoji: "🛍️", title: "Create an online store",
     desc: "A hosted storefront with your products, branding and checkout.",
     steps: [
-      { sel: '[data-tour="new-store"]', title: "Create a store", description: "Start here — you'll get a step-by-step setup: branding, products, then go live." },
+      { sel: '[data-tour="new-store"]', title: "Step 1 — Create a store", description: "Click New storefront to begin. You just give it a name; a guided setup opens next." },
+      { sel: '[data-tour="store-list"]', title: "Step 2 — Set it up & go live", description: "Your stores live here. Open one for the step-by-step setup: Branding → Products → Navigation → Homepage → then Submit for review, pick a plan, pay, and it's live." },
     ],
   },
   {
     key: "sites", emoji: "🔌", title: "Use the WordPress plugin",
     desc: "Connect your existing WooCommerce site with a plugin key.",
     steps: [
-      { sel: '[data-tour="download-plugin"]', title: "Download the plugin", description: "Install this on your WordPress site (Plugins → Add New → Upload)." },
-      { sel: '[data-tour="request-key"]', title: "Request a key", description: "Get an enrollment key for each site, then paste it into the plugin." },
+      { sel: '[data-tour="download-plugin"]', title: "Step 1 — Download the plugin", description: "Download the plugin ZIP, then in WordPress: Plugins → Add New → Upload → Activate." },
+      { sel: '[data-tour="request-key"]', title: "Step 2 — Request a key", description: "Request an enrollment key for the site you want to connect." },
+      { sel: '[data-tour="plugin-keys"]', title: "Step 3 — Paste your key", description: "Your keys appear here. Copy one and paste it into the plugin's settings — products sync automatically." },
     ],
   },
   {
     key: "search", emoji: "🔎", title: "Browse the catalogue",
     desc: "Search every product you're able to sell.",
     steps: [
-      { sel: '[data-tour="catalogue-search"]', title: "Search products", description: "Type a name, brand or category to explore the full catalogue." },
+      { sel: '[data-tour="catalogue-search"]', title: "Step 1 — Search", description: "Type a product name or brand to search the full catalogue." },
+      { sel: '[data-tour="search-filters"]', title: "Step 2 — Narrow it down", description: "Filter by category, stock, price, brand or size to find exactly what you want to sell." },
     ],
   },
   {
     key: "request", emoji: "➕", title: "Request a new source",
     desc: "Ask us to add a new supplier site to your account.",
     steps: [
-      { sel: '[data-tour="request-form"]', title: "Request a source", description: "Enter the supplier's site and link it to one of your stores — we take it from there." },
+      { sel: '[data-tour="request-store"]', title: "Step 1 — Pick a store", description: "Choose which store the new source should feed." },
+      { sel: '[data-tour="request-url"]', title: "Step 2 — Add the site", description: "Paste the supplier site's URL." },
+      { sel: '[data-tour="request-submit"]', title: "Step 3 — Send it", description: "Submit the request — we review it and add the source, then it attaches to your store automatically." },
     ],
   },
 ];

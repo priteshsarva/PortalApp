@@ -60,7 +60,7 @@ export default function CatalogueSearch() {
       <PageHead title="Catalogue search" sub="Every product across all our source sites — research what you can sell." />
 
       <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }} data-tour="search-filters">
           <div style={{ position: "relative", flex: 1, minWidth: 220 }} data-tour="catalogue-search">
             <div style={lbl}>Search</div>
             <Search size={15} style={{ position: "absolute", left: 11, top: 30, color: "#9aa3b2" }} />

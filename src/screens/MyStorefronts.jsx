@@ -70,8 +70,8 @@ export default function MyStorefronts() {
       </div>
       {creating && <CreateSiteModal onClose={() => setCreating(false)} onDone={openNewSite} />}
 
-      {sites.length === 0 ? <Card><Empty msg="No storefronts yet. Create one to get a link you can share." /></Card> : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {sites.length === 0 ? <div data-tour="store-list"><Card><Empty msg="No storefronts yet. Create one to get a link you can share." /></Card></div> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-tour="store-list">
           {sites.map((s) => (
             <Card key={s.id} style={{ cursor: "pointer" }}>
               <div onClick={() => setSelected(s)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
