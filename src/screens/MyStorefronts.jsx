@@ -171,6 +171,9 @@ function StoreDetail({ site, onBack, onChanged }) {
           <div style={{ fontSize: 13, color: "#a23a4b" }}>
             This storefront is <strong>paused</strong> — buyers can't reach it. It paused because the renewal wasn't paid within the 5-day grace after expiry. Renew from the <strong>Payment</strong> step to bring it back online.
           </div>
+          {/* while paused the public store is down, but the owner can still preview
+              (and share) it with the preview password */}
+          <PreviewAccess site={site} />
         </Card>
       )}
       {site.status === "draft" && (
@@ -1096,6 +1099,7 @@ function HomepagePresetPanel({ site }) {
     { id: "velocity", name: "Velocity (athletic / shoes)", description: "High-energy neon + crimson, floating shoe shots, men's/women's selector, tech breakdown. Built shoes-first — best for footwear stores.", section_count: "auto" },
     { id: "chrono", name: "Chrono (luxe / watches)", description: "Same bold layout as Velocity in a gold + deep-blue palette, built watches-first — floating watch shots, movement/crystal tech breakdown. Best for watch stores.", section_count: "auto" },
     { id: "redline", name: "Redline (automotive / performance)", description: "Aggressive red-and-black motorsport look — dark hero, flash sale, top categories, most popular grid, red campaign banner. No product repeats. Best for car parts, gadgets & performance gear.", section_count: "auto" },
+    { id: "haven", name: "Haven (furniture / home décor)", description: "Warm editorial magazine look — cream + espresso, serif headings, split hero, category strip, asymmetric feature sections, room grid, lifestyle gallery. No product repeats. Best for furniture, décor & lifestyle.", section_count: "auto" },
   ];
 
   return (
