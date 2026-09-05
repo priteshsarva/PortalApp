@@ -1095,6 +1095,7 @@ function HomepagePresetPanel({ site }) {
     { id: "atelier", name: "Atelier (editorial / fashion)", description: "Premium black-and-white fashion-magazine look — full-screen campaign hero, category cards, editorial collage, testimonial, marquee. Best for clothing & lifestyle brands.", section_count: "auto" },
     { id: "velocity", name: "Velocity (athletic / shoes)", description: "High-energy neon + crimson, floating shoe shots, men's/women's selector, tech breakdown. Built shoes-first — best for footwear stores.", section_count: "auto" },
     { id: "chrono", name: "Chrono (luxe / watches)", description: "Same bold layout as Velocity in a gold + deep-blue palette, built watches-first — floating watch shots, movement/crystal tech breakdown. Best for watch stores.", section_count: "auto" },
+    { id: "redline", name: "Redline (automotive / performance)", description: "Aggressive red-and-black motorsport look — dark hero, flash sale, top categories, most popular grid, red campaign banner. No product repeats. Best for car parts, gadgets & performance gear.", section_count: "auto" },
   ];
 
   return (
@@ -1484,14 +1485,15 @@ function OrdersPanel({ siteId }) {
                     <>
                       <div style={{ margin: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
                         {detail[o.id].items.map((it) => (
-                          <div key={it.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#42505f" }}>
+                          <div key={it.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#42505f", gap: 10 }}>
                             <span>
                               {it.page_url
                                 ? <a href={it.page_url} target="_blank" rel="noreferrer" style={{ color: "#3b6fd8", textDecoration: "none" }}>{it.product_name}</a>
                                 : it.product_name}
                               {it.size ? ` (Size ${it.size})` : ""} × {it.qty}
+                              {it.product_url && <> · <a href={it.product_url} target="_blank" rel="noreferrer" style={{ color: "#6b7688", textDecoration: "underline" }}>source ↗</a></>}
                             </span>
-                            <span>₹{Number(it.line_total).toLocaleString("en-IN")}</span>
+                            <span style={{ whiteSpace: "nowrap" }}>₹{Number(it.line_total).toLocaleString("en-IN")}</span>
                           </div>
                         ))}
                       </div>

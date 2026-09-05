@@ -62,9 +62,12 @@ export default function AdminOrders() {
                   {!detail[o.id] ? <Spinner msg="Loading…" /> : (
                     <div style={{ margin: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
                       {detail[o.id].items.map((it) => (
-                        <div key={it.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#42505f" }}>
-                          <span>{it.product_name}{it.size ? ` (Size ${it.size})` : ""} × {it.qty}</span>
-                          <span>₹{Number(it.line_total).toLocaleString("en-IN")}</span>
+                        <div key={it.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#42505f", gap: 10 }}>
+                          <span>
+                            {it.product_name}{it.size ? ` (Size ${it.size})` : ""} × {it.qty}
+                            {it.product_url && <> · <a href={it.product_url} target="_blank" rel="noreferrer" style={{ color: "#6b7688", textDecoration: "underline" }}>source ↗</a></>}
+                          </span>
+                          <span style={{ whiteSpace: "nowrap" }}>₹{Number(it.line_total).toLocaleString("en-IN")}</span>
                         </div>
                       ))}
                       <div style={{ fontSize: 12, color: "#6b7688", marginTop: 4 }}>
