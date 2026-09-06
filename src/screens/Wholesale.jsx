@@ -173,11 +173,26 @@ function ProductModal({ owner, product, onClose, onDone }) {
   const [subs, setSubs] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [canUpload, setCanUpload] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
 
   useEffect(() => {
     api.taxonomy(f.primary_cat).then((r) => setSubs((r.taxonomy || []).filter((t) => t.primary_cat === f.primary_cat))).catch(() => setSubs([]));
   }, [f.primary_cat]);
+
+  useEffect(() => { api.uploadStatus().then((r) => setCanUpload(!!r.configured)).catch(() => setCanUpload(false)); }, []);
+
+  async function onPickFiles(e) {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    setUploading(true); setError(null);
+    try {
+      const r = await api.uploadWholesaleImages(files);
+      const urls = r.urls || [];
+      setF((s) => ({ ...s, images: [...s.images.filter((u) => u.trim()), ...urls] }));
+    } catch (err) { setError(err); } finally { setUploading(false); e.target.value = ""; }
+  }
 
   const setImg = (i, v) => setF((s) => { const images = [...s.images]; images[i] = v; return { ...s, images }; });
   const addImg = () => setF((s) => ({ ...s, images: [...s.images, ""] }));
@@ -249,7 +264,27 @@ function ProductModal({ owner, product, onClose, onDone }) {
           </Field>
         </div>
         <Field label="Description"><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical", fontFamily: "inherit" }} value={f.description} onChange={(e) => set("description", e.target.value)} /></Field>
-        <Field label="Image URLs">
+        <Field label="Images">
+          {canUpload && (
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", border: "1px dashed #b7c0cf", borderRadius: 9, padding: "8px 12px", fontSize: 13, color: "#42505f" }}>
+                <input type="file" accept="image/*" multiple onChange={onPickFiles} style={{ display: "none" }} />
+                {uploading ? "Uploading…" : "⬆ Upload images"}
+              </label>
+              <span style={{ fontSize: 11.5, color: "#8a93a3", marginLeft: 8 }}>JPG/PNG/WebP, up to 10. Auto-optimized.</span>
+            </div>
+          )}
+          {/* thumbnails of what's set */}
+          {f.images.filter((u) => u.trim()).length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+              {f.images.filter((u) => u.trim()).map((u, i) => (
+                <div key={i} style={{ width: 46, height: 46, borderRadius: 6, overflow: "hidden", border: "1px solid #e6e9f0" }}>
+                  <img src={u} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} referrerPolicy="no-referrer" />
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ fontSize: 11.5, color: "#8a93a3", marginBottom: 4 }}>{canUpload ? "Or paste image URLs:" : "Paste image URLs:"}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {f.images.map((url, i) => (
               <div key={i} style={{ display: "flex", gap: 6 }}>

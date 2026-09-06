@@ -78,6 +78,19 @@ export const api = {
   wholesaleUpdateProduct: (pid, body) => req(`/portal/wholesale/products/${pid}`, { method: "PATCH", body }),
   wholesaleDeleteProduct: (pid) => req(`/portal/wholesale/products/${pid}`, { method: "DELETE" }),
   wholesaleReverify: (ids) => req("/portal/wholesale/products/reverify", { method: "POST", body: { ids } }),
+  uploadStatus: () => req("/portal/upload/status"),
+  uploadWholesaleImages: async (files) => {
+    const fd = new FormData();
+    Array.from(files).forEach((f) => fd.append("files", f));
+    const res = await fetch(BASE + "/portal/wholesale/upload", {
+      method: "POST",
+      headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}, // no Content-Type: browser sets multipart boundary
+      body: fd,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+    return data; // { files:[{url,key}], urls:[...] }
+  },
 
   // ---- wholesale: admin ----
   adminWholesalers: (status) => req(`/portal/admin/wholesalers${status ? `?status=${encodeURIComponent(status)}` : ""}`),
