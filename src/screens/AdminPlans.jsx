@@ -51,12 +51,25 @@ export default function AdminPlans() {
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</span>
                     <Badge status={p.active ? "active" : "paused"} />
+                    {p.kind && p.kind !== "retail" && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: "#eef4ff", color: "#2b5bb5" }}>{p.kind}</span>}
                   </div>
                   <div style={{ fontSize: 13.5, color: "#1b2230", marginTop: 4 }}>
                     <strong>{money(p.price, p.currency)}</strong>
                     <span style={{ color: "#6b7688" }}> / {p.interval_count > 1 ? `${p.interval_count} ` : ""}{p.interval}{p.interval_count > 1 ? "s" : ""}</span>
                   </div>
                   {p.description && <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 4, maxWidth: 520 }}>{p.description}</div>}
+                  {Array.isArray(p.features) && p.features.length > 0 && (
+                    <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 3 }}>
+                      {p.features.map((ft, i) => <li key={i} style={{ fontSize: 12.5, color: "#42505f" }}>✓ {ft}</li>)}
+                    </ul>
+                  )}
+                  {p.limits && (p.limits.max_products || p.limits.allow_payout_routing) && (
+                    <div style={{ fontSize: 11.5, color: "#8a93a3", marginTop: 6 }}>
+                      {p.limits.max_products ? `Up to ${p.limits.max_products} products` : ""}
+                      {p.limits.max_products && p.limits.allow_payout_routing ? " · " : ""}
+                      {p.limits.allow_payout_routing ? "Wallet payouts" : ""}
+                    </div>
+                  )}
                 </div>
                 <Btn tone={p.active ? "ghost" : "lime"} small disabled={busyId === p.id} onClick={() => toggleActive(p)}>
                   {busyId === p.id ? "…" : p.active ? "Pause" : "Resume"}
@@ -73,7 +86,8 @@ export default function AdminPlans() {
 }
 
 function NewPlanModal({ onClose, onDone }) {
-  const [f, setF] = useState({ name: "", price: "", currency: "INR", interval: "month", interval_count: 1, description: "", sort_order: 0 });
+  const [f, setF] = useState({ name: "", price: "", currency: "INR", interval: "month", interval_count: 1, description: "", sort_order: 0,
+    kind: "retail", features: "", max_products: "", max_images: "", allow_payout_routing: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
@@ -82,7 +96,17 @@ function NewPlanModal({ onClose, onDone }) {
     if (!f.name.trim() || f.price === "" || isNaN(Number(f.price))) { setError(new Error("Name and a numeric price are required")); return; }
     setBusy(true); setError(null);
     try {
-      await api.adminCreatePlan({ ...f, price: Number(f.price), interval_count: Number(f.interval_count) || 1, sort_order: Number(f.sort_order) || 0 });
+      const limits = {};
+      if (f.max_products !== "") limits.max_products = Number(f.max_products) || 0;
+      if (f.max_images !== "") limits.max_images = Number(f.max_images) || 0;
+      if (f.allow_payout_routing) limits.allow_payout_routing = true;
+      await api.adminCreatePlan({
+        name: f.name, price: Number(f.price), currency: f.currency, interval: f.interval,
+        interval_count: Number(f.interval_count) || 1, description: f.description,
+        sort_order: Number(f.sort_order) || 0, kind: f.kind,
+        features: f.features.split("\n").map((s) => s.trim()).filter(Boolean),
+        limits,
+      });
       onDone();
     } catch (e) { setError(e); setBusy(false); }
   }
@@ -107,7 +131,29 @@ function NewPlanModal({ onClose, onDone }) {
           </Field>
           <Field label="Every N intervals"><input style={inputStyle} value={f.interval_count} onChange={(e) => set("interval_count", e.target.value)} inputMode="numeric" /></Field>
         </div>
-        <Field label="Description (optional)"><input style={inputStyle} value={f.description} onChange={(e) => set("description", e.target.value)} placeholder="What's included" /></Field>
+        <Field label="Plan type">
+          <select style={inputStyle} value={f.kind} onChange={(e) => set("kind", e.target.value)}>
+            <option value="retail">Retail (storefront / plugin)</option>
+            <option value="wholesale">Wholesale (supplier listings)</option>
+            <option value="both">Both</option>
+          </select>
+        </Field>
+        <Field label="Description">
+          <textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical", fontFamily: "inherit" }} value={f.description}
+            onChange={(e) => set("description", e.target.value)} placeholder="Shown under the plan name on the user's plans page." />
+        </Field>
+        <Field label="Features (one per line — shown as ✓ bullets on the plan card)">
+          <textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical", fontFamily: "inherit" }} value={f.features}
+            onChange={(e) => set("features", e.target.value)} placeholder={"List up to 100 products\nInventory management\nSales dashboard"} />
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="Max products (blank = unlimited)"><input style={inputStyle} value={f.max_products} onChange={(e) => set("max_products", e.target.value)} inputMode="numeric" placeholder="e.g. 100" /></Field>
+          <Field label="Max images / product"><input style={inputStyle} value={f.max_images} onChange={(e) => set("max_images", e.target.value)} inputMode="numeric" placeholder="e.g. 5" /></Field>
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#42505f", margin: "2px 0 6px", cursor: "pointer" }}>
+          <input type="checkbox" checked={f.allow_payout_routing} onChange={(e) => set("allow_payout_routing", e.target.checked)} />
+          Allow platform-held payments &amp; wallet payouts (per-vendor payment routing)
+        </label>
         <Field label="Sort order"><input style={inputStyle} value={f.sort_order} onChange={(e) => set("sort_order", e.target.value)} inputMode="numeric" /></Field>
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <Btn tone="lime" onClick={submit} disabled={busy}>{busy ? "Creating…" : "Create plan"}</Btn>

@@ -386,6 +386,11 @@ function GoLivePanel({ site, onChanged }) {
                       <span style={{ fontWeight: 700, fontSize: 13.5 }}>{planMoney(p)}</span>
                     </div>
                     {p.description && <div style={{ fontSize: 12, color: "#6b7688", marginTop: 3 }}>{p.description}</div>}
+                    {Array.isArray(p.features) && p.features.length > 0 && (
+                      <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 2 }}>
+                        {p.features.map((ft, i) => <li key={i} style={{ fontSize: 11.5, color: "#42505f" }}>✓ {ft}</li>)}
+                      </ul>
+                    )}
                   </button>
                 );
               })}
