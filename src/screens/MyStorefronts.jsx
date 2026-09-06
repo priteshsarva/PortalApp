@@ -1198,6 +1198,7 @@ function SettingsPanel({ siteId }) {
       whatsapp: s.whatsapp || "",
       upi_id: s.upi_id || "",
       upi_name: s.upi_name || "",
+      payment_position: s.payment_position === "before" ? "before" : "after",
       email: s.email || "",
       phone: s.phone || "",
       announcement: s.announcement || "",
@@ -1287,6 +1288,12 @@ function SettingsPanel({ siteId }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="UPI ID"><input style={inputStyle} value={form.upi_id} onChange={(e) => set("upi_id", e.target.value.trim())} placeholder="yourname@ptyes / yourname@okhdfcbank" /></Field>
         <Field label="Payee name (shown in the UPI app)"><input style={inputStyle} value={form.upi_name} onChange={(e) => set("upi_name", e.target.value)} placeholder="Defaults to your store name" /></Field>
+        <Field label="When to show the payment popup">
+          <select style={inputStyle} value={form.payment_position} onChange={(e) => set("payment_position", e.target.value)}>
+            <option value="after">After delivery address (default)</option>
+            <option value="before">Before delivery address</option>
+          </select>
+        </Field>
       </div>
 
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>Colour palette</div>
