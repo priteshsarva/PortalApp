@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { ExternalLink, Plus, ArrowLeft, Search, ArrowRight } from "lucide-react";
 import { api } from "../api.js";
+import ShipmentModal from "../components/ShipmentModal.jsx";
 import { C, PageHead, Card, Btn, Badge, Field, inputStyle, Spinner, ErrorNote, Empty, Modal, fmtDate, storeUrl, useIsMobile } from "../ui.jsx";
 import AnalyticsView, { exportAnalyticsCsv } from "../components/AnalyticsView.jsx";
 
@@ -1480,6 +1481,14 @@ function OrdersPanel({ siteId }) {
     catch (e) { alert(e.message); }
   }
 
+  const [ship, setShip] = useState(null); // order for the ship-to-customer modal
+  async function verifyPayment(o) {
+    const utr = window.prompt(`Confirm you've received payment for ${o.order_no}.\nUTR / reference (optional):`, "") ?? undefined;
+    if (utr === undefined) return;
+    try { await api.verifyOrderPayment(siteId, o.id, utr || undefined); load(); }
+    catch (e) { alert(e.message); }
+  }
+
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -1527,6 +1536,14 @@ function OrdersPanel({ siteId }) {
                       <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 12 }}>
                         📍 {[o.address.line1, o.address.city, o.address.state, o.address.pincode].filter(Boolean).join(", ")} · 📞 {o.buyer_phone}
                       </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+                        <span style={{ fontSize: 12, color: "#6b7688" }}>Payment:</span>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: o.payment_status === "verified" ? "#e8f7ee" : "#fff6e5", color: o.payment_status === "verified" ? "#14663a" : "#8a6100" }}>
+                          {o.payment_status || "unpaid"}
+                        </span>
+                        {o.payment_status !== "verified" && <Btn small tone="lime" onClick={() => verifyPayment(o)}>Verify payment</Btn>}
+                        {o.payment_status === "verified" && <Btn small onClick={() => setShip(o)}>Ship to customer</Btn>}
+                      </div>
                       <Field label="Status">
                         <select style={{ ...inputStyle, maxWidth: 200 }} value={o.status} onChange={(e) => changeStatus(o.id, e.target.value)}>
                           {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -1540,6 +1557,7 @@ function OrdersPanel({ siteId }) {
           ))}
         </div>
       )}
+      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg="retailer_to_customer" onClose={() => setShip(null)} onDone={() => { setShip(null); load(); }} />}
     </Card>
   );
 }

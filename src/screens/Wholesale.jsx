@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { api } from "../api.js";
 import { PageHead, Card, Btn, Field, inputStyle, Spinner, ErrorNote, Empty, Badge, fmtDate } from "../ui.jsx";
+import ShipmentModal from "../components/ShipmentModal.jsx";
 
 const PRIMARY_CATS = ["shoes", "watches", "clothing", "accessories", "home", "electronics", "beauty", "other"];
 
@@ -26,9 +27,22 @@ export default function Wholesale() {
   if (!me) return <ApplyForm onDone={load} />;
 
   const status = me.enrollment_status;
+  return <ApprovedView me={me} status={status} />;
+}
+
+function ApprovedView({ me, status }) {
+  const [tab, setTab] = useState("listings");
   return (
     <div>
       <PageHead title="Wholesale" sub={`${me.business_name} · supplier account`} />
+      {status === "active" && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          {[["listings", "My listings"], ["sales", "Sales"]].map(([k, label]) => (
+            <button key={k} onClick={() => setTab(k)}
+              style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#C8FF3D" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
+          ))}
+        </div>
+      )}
       {status === "pending" && (
         <Card style={{ background: "#fff8e6", border: "1px solid #f0d98a" }}>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>Your application is under review</div>
@@ -41,8 +55,47 @@ export default function Wholesale() {
           <div style={{ fontSize: 13, color: "#6b7688" }}>Contact support if you think this is a mistake.</div>
         </Card>
       )}
-      <Listings owner={me} />
+      {tab === "sales" && status === "active" ? <Sales /> : <Listings owner={me} />}
     </div>
+  );
+}
+
+function Sales() {
+  const [orders, setOrders] = useState(null);
+  const [error, setError] = useState(null);
+  const [ship, setShip] = useState(null); // order for shipment modal
+  function load() { setError(null); api.wholesaleOrders().then((r) => setOrders(r.orders || [])).catch(setError); }
+  useEffect(load, []);
+  if (error) return <Card><ErrorNote error={error} /></Card>;
+  if (!orders) return <Card><Spinner /></Card>;
+  if (!orders.length) return <Card><Empty msg="No orders for your products yet." /></Card>;
+  return (
+    <Card>
+      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Your sales</div>
+      <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>Orders that include your products, across every retailer. Ship to the retailer, then upload parcel photos to release your funds.</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {orders.map((o) => (
+          <div key={o.id} style={{ border: "1px solid #eef1f6", borderRadius: 10, padding: "10px 13px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.order_no} <span style={{ fontWeight: 500, color: "#9aa3b2" }}>· via {o.store_name}</span></div>
+                <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>
+                  {o.items.map((it) => `${it.product_name}${it.size ? ` (${it.size})` : ""} ×${it.qty}`).join(", ")}
+                </div>
+                <div style={{ fontSize: 12, color: "#42505f", marginTop: 2 }}>Your share: <strong>₹{Number(o.my_total).toLocaleString("en-IN")}</strong> · ship to: {[o.address?.city, o.address?.state, o.address?.pincode].filter(Boolean).join(", ")}</div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                <Badge status={o.payment_status === "verified" ? "active" : "pending"} />
+                {o.payment_status === "verified"
+                  ? <Btn small tone="lime" onClick={() => setShip(o)}>Ship to retailer</Btn>
+                  : <span style={{ fontSize: 11, color: "#8a6100" }}>awaiting payment</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg="wholesaler_to_retailer" onClose={() => setShip(null)} onDone={() => { setShip(null); load(); }} />}
+    </Card>
   );
 }
 

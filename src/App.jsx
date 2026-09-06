@@ -31,6 +31,7 @@ import AdminBilling from "./screens/AdminBilling.jsx";
 import Wholesale from "./screens/Wholesale.jsx";
 import AdminWholesalers from "./screens/AdminWholesalers.jsx";
 import Wallet from "./screens/Wallet.jsx";
+import AdminShipments from "./screens/AdminShipments.jsx";
 import WelcomeTour from "./Tour.jsx";
 
 const clientNav = [
@@ -56,6 +57,7 @@ const adminNav = [
   ["plans", "Plans", Receipt],
   ["billingAdmin", "Billing", CreditCard],
   ["wholesalers", "Wholesale", Store],
+  ["shipments", "Shipments", ClipboardList],
   ["users", "Clients", Users],
   ["sources", "Product sources", Database],
   ["brandMap", "Brand names", Tags],
@@ -129,6 +131,7 @@ export default function App() {
       case "plans": return <AdminPlans />;
       case "billingAdmin": return <AdminBilling />;
       case "wholesalers": return <AdminWholesalers />;
+      case "shipments": return <AdminShipments />;
       case "users": return <AdminClients />;
       case "email": return <AdminEmailSettings />;
       case "payments": return <AdminPaymentSettings />;

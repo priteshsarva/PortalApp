@@ -74,6 +74,25 @@ export const api = {
   adminPayouts: (status) => req(`/portal/admin/payouts${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   adminUpdatePayout: (id, body) => req(`/portal/admin/payouts/${id}`, { method: "PATCH", body }),
 
+  // ---- fulfilment: payment verify + shipments ----
+  verifyOrderPayment: (siteId, orderId, utr) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/verify-payment`, { method: "POST", body: { utr } }),
+  adminVerifyOrder: (orderId, utr) => req(`/portal/admin/orders/${orderId}/verify-payment`, { method: "POST", body: { utr } }),
+  adminRefundOrder: (orderId) => req(`/portal/admin/orders/${orderId}/refund`, { method: "POST" }),
+  submitShipment: (body) => req("/portal/shipments", { method: "POST", body }),
+  myShipments: () => req("/portal/shipments"),
+  shipmentsByOrder: (orderId) => req(`/portal/shipments?order_id=${encodeURIComponent(orderId)}`),
+  adminShipments: (status) => req(`/portal/admin/shipments${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  adminUpdateShipment: (id, body) => req(`/portal/admin/shipments/${id}`, { method: "PATCH", body }),
+  adminPurgePreview: (grace) => req(`/portal/admin/shipments/purge-preview${grace ? `?grace=${grace}` : ""}`),
+  uploadShipmentPhotos: async (files) => {
+    const fd = new FormData();
+    Array.from(files).forEach((f) => fd.append("files", f));
+    const res = await fetch(BASE + "/portal/shipments/upload", { method: "POST", headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}, body: fd });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+    return data; // { files:[{url,key}] }
+  },
+
   // ---- admin: invoices (manual UPI reconciliation) ----
   adminInvoices: (status) => req(`/portal/admin/invoices${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   adminMarkInvoicePaid: (id, utr) => req(`/portal/admin/invoices/${id}/mark-paid`, { method: "POST", body: { utr } }),
@@ -88,6 +107,7 @@ export const api = {
   wholesaleUpdateProduct: (pid, body) => req(`/portal/wholesale/products/${pid}`, { method: "PATCH", body }),
   wholesaleDeleteProduct: (pid) => req(`/portal/wholesale/products/${pid}`, { method: "DELETE" }),
   wholesaleReverify: (ids) => req("/portal/wholesale/products/reverify", { method: "POST", body: { ids } }),
+  wholesaleOrders: () => req("/portal/wholesale/orders"),
   uploadStatus: () => req("/portal/upload/status"),
   uploadWholesaleImages: async (files) => {
     const fd = new FormData();
