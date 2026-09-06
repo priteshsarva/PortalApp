@@ -28,6 +28,8 @@ import AdminOrders from "./screens/AdminOrders.jsx";
 import AdminPlans from "./screens/AdminPlans.jsx";
 import AdminAnalytics from "./screens/AdminAnalytics.jsx";
 import AdminBilling from "./screens/AdminBilling.jsx";
+import Wholesale from "./screens/Wholesale.jsx";
+import AdminWholesalers from "./screens/AdminWholesalers.jsx";
 import WelcomeTour from "./Tour.jsx";
 
 const clientNav = [
@@ -38,6 +40,7 @@ const clientNav = [
   ["search", "Browse products", Search],
   ["sites", "WordPress plugin", Globe],
   ["plugin", "Set up plugin", Plug],
+  ["wholesale", "Sell wholesale", Store],
   ["billing", "Billing", Receipt],
   ["notifications", "Notifications", Bell],
   // Hidden until built: "analytics" (per-store analytics live on each store),
@@ -50,6 +53,7 @@ const adminNav = [
   ["hostedOrders", "Store orders", ClipboardList],
   ["plans", "Plans", Receipt],
   ["billingAdmin", "Billing", CreditCard],
+  ["wholesalers", "Wholesale", Store],
   ["users", "Clients", Users],
   ["sources", "Product sources", Database],
   ["brandMap", "Brand names", Tags],
@@ -106,6 +110,7 @@ export default function App() {
         case "plugin": return <PluginSetup />;
         case "search": return <CatalogueSearch />;
         case "billing": return <Billing />;
+        case "wholesale": return <Wholesale />;
         case "notifications": return <Notifications />;
         default: return null;
       }
@@ -120,6 +125,7 @@ export default function App() {
       case "hostedOrders": return <AdminOrders />;
       case "plans": return <AdminPlans />;
       case "billingAdmin": return <AdminBilling />;
+      case "wholesalers": return <AdminWholesalers />;
       case "users": return <AdminClients />;
       case "email": return <AdminEmailSettings />;
       case "payments": return <AdminPaymentSettings />;

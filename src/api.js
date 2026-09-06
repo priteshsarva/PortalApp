@@ -68,6 +68,30 @@ export const api = {
   adminInvoices: (status) => req(`/portal/admin/invoices${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   adminMarkInvoicePaid: (id, utr) => req(`/portal/admin/invoices/${id}/mark-paid`, { method: "POST", body: { utr } }),
 
+  // ---- wholesale: vendor ----
+  wholesaleMe: () => req("/portal/wholesale/me"),
+  wholesaleApply: (body) => req("/portal/wholesale/apply", { method: "POST", body }),
+  taxonomy: (primary) => req(`/portal/taxonomy${primary ? `?primary=${encodeURIComponent(primary)}` : ""}`),
+  proposeTaxonomy: (primary_cat, sub_label) => req("/portal/taxonomy/propose", { method: "POST", body: { primary_cat, sub_label } }),
+  wholesaleProducts: () => req("/portal/wholesale/products"),
+  wholesaleCreateProduct: (body) => req("/portal/wholesale/products", { method: "POST", body }),
+  wholesaleUpdateProduct: (pid, body) => req(`/portal/wholesale/products/${pid}`, { method: "PATCH", body }),
+  wholesaleDeleteProduct: (pid) => req(`/portal/wholesale/products/${pid}`, { method: "DELETE" }),
+  wholesaleReverify: (ids) => req("/portal/wholesale/products/reverify", { method: "POST", body: { ids } }),
+
+  // ---- wholesale: admin ----
+  adminWholesalers: (status) => req(`/portal/admin/wholesalers${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  adminApproveWholesaler: (id) => req(`/portal/admin/wholesalers/${id}/approve`, { method: "POST" }),
+  adminRejectWholesaler: (id, reason) => req(`/portal/admin/wholesalers/${id}/reject`, { method: "POST", body: { reason } }),
+  adminPatchWholesaler: (id, body) => req(`/portal/admin/wholesalers/${id}`, { method: "PATCH", body }),
+  adminTaxonomy: () => req("/portal/admin/taxonomy"),
+  adminCreateTaxonomy: (body) => req("/portal/admin/taxonomy", { method: "POST", body }),
+  adminPatchTaxonomy: (id, body) => req(`/portal/admin/taxonomy/${id}`, { method: "PATCH", body }),
+  adminDeleteTaxonomy: (id) => req(`/portal/admin/taxonomy/${id}`, { method: "DELETE" }),
+  adminWholesaleProducts: (owner) => req(`/portal/admin/wholesale-products${owner ? `?owner=${encodeURIComponent(owner)}` : ""}`),
+  adminPatchWholesaleProduct: (pid, body) => req(`/portal/admin/wholesale-products/${pid}`, { method: "PATCH", body }),
+  adminDeleteWholesaleProduct: (pid) => req(`/portal/admin/wholesale-products/${pid}`, { method: "DELETE" }),
+
   // ---- client: enrollments ----
   enrollments: () => req("/portal/enrollments"),
   createShop: (shop_url, plan_id) => req("/portal/shops", { method: "POST", body: { shop_url, plan_id } }),
