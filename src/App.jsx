@@ -27,6 +27,7 @@ import AdminHostedSites from "./screens/AdminHostedSites.jsx";
 import AdminOrders from "./screens/AdminOrders.jsx";
 import AdminPlans from "./screens/AdminPlans.jsx";
 import AdminAnalytics from "./screens/AdminAnalytics.jsx";
+import AdminBilling from "./screens/AdminBilling.jsx";
 import WelcomeTour from "./Tour.jsx";
 
 const clientNav = [
@@ -48,6 +49,7 @@ const adminNav = [
   ["hostedSites", "Online stores", LayoutTemplate],
   ["hostedOrders", "Store orders", ClipboardList],
   ["plans", "Plans", Receipt],
+  ["billingAdmin", "Billing", CreditCard],
   ["users", "Clients", Users],
   ["sources", "Product sources", Database],
   ["brandMap", "Brand names", Tags],
@@ -117,6 +119,7 @@ export default function App() {
       case "hostedSites": return <AdminHostedSites />;
       case "hostedOrders": return <AdminOrders />;
       case "plans": return <AdminPlans />;
+      case "billingAdmin": return <AdminBilling />;
       case "users": return <AdminClients />;
       case "email": return <AdminEmailSettings />;
       case "payments": return <AdminPaymentSettings />;

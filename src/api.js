@@ -43,7 +43,10 @@ export const api = {
   invoices: () => req("/portal/invoices"),
   payInvoice: (id) => req(`/portal/invoices/${id}/pay`, { method: "POST" }),
   verifyInvoice: (id) => req(`/portal/invoices/${id}/verify`),
-  paymentInfo: () => req("/portal/payment-info", { auth: false }),
+  // payment-info is shadowed by auth-gated /portal routers, so it needs the token
+  // (the billing user is always signed in anyway).
+  paymentInfo: () => req("/portal/payment-info"),
+  claimInvoiceUpi: (id, utr) => req(`/portal/invoices/${id}/upi-claim`, { method: "POST", body: { utr } }),
 
   // ---- admin: clients + settings ----
   adminUsers: (q) => req(`/portal/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
@@ -58,6 +61,12 @@ export const api = {
   adminGetPayment: () => req("/portal/admin/settings/payment"),
   adminSaveProvider: (id, cfg) => req(`/portal/admin/settings/payment/provider/${id}`, { method: "PUT", body: cfg }),
   adminSetActiveProvider: (id) => req("/portal/admin/settings/payment/active", { method: "PUT", body: { id } }),
+  adminGetPlatformUpi: () => req("/portal/admin/settings/platform-upi"),
+  adminSavePlatformUpi: (body) => req("/portal/admin/settings/platform-upi", { method: "PUT", body }),
+
+  // ---- admin: invoices (manual UPI reconciliation) ----
+  adminInvoices: (status) => req(`/portal/admin/invoices${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  adminMarkInvoicePaid: (id, utr) => req(`/portal/admin/invoices/${id}/mark-paid`, { method: "POST", body: { utr } }),
 
   // ---- client: enrollments ----
   enrollments: () => req("/portal/enrollments"),

@@ -26,6 +26,37 @@ const PROVIDER_FIELDS = {
   ],
 };
 
+// Our OWN UPI ID for collecting plan payments from vendors (manual). Vendors see
+// a "Pay by UPI" option on their Billing screen and send us the screenshot; we
+// confirm each invoice by hand under Billing (admin).
+function PlatformUpiCard() {
+  const [f, setF] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState(null);
+  useEffect(() => { api.adminGetPlatformUpi().then((r) => setF(r.upi || { upi_id: "", upi_name: "", whatsapp: "" })).catch(setErr); }, []);
+  async function save() {
+    setBusy(true); setErr(null); setMsg("");
+    try { const r = await api.adminSavePlatformUpi(f); setF(r.upi); setMsg("Saved. Vendors can now pay by UPI."); }
+    catch (e) { setErr(e); } finally { setBusy(false); }
+  }
+  if (!f) return null;
+  return (
+    <Card style={{ maxWidth: 640, marginTop: 16 }}>
+      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Platform UPI (manual billing)</div>
+      <div style={{ fontSize: 12.5, color: "#68727f", marginBottom: 14 }}>
+        Your own UPI ID for collecting plan payments from vendors. They get a “Pay by UPI” button on Billing (QR + your UPI ID) and WhatsApp you the screenshot. You confirm each invoice under Billing. Leave blank to offer only the online gateway above.
+      </div>
+      <ErrorNote error={err} />
+      {msg && <div style={{ background: "#eef7ee", border: "1px solid #cbe5cb", color: "#2c6e2c", padding: "8px 12px", borderRadius: 8, marginBottom: 12, fontSize: 12.5 }}>{msg}</div>}
+      <Field label="UPI ID"><input style={inputStyle} value={f.upi_id} onChange={(e) => setF({ ...f, upi_id: e.target.value.trim() })} placeholder="platform@okhdfcbank" /></Field>
+      <Field label="Payee name (shown in the UPI app)"><input style={inputStyle} value={f.upi_name} onChange={(e) => setF({ ...f, upi_name: e.target.value })} placeholder="Server Products" /></Field>
+      <Field label="Billing WhatsApp (where vendors send screenshots)"><input style={inputStyle} value={f.whatsapp} onChange={(e) => setF({ ...f, whatsapp: e.target.value })} placeholder="+91 98765 43210" /></Field>
+      <Btn tone="lime" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</Btn>
+    </Card>
+  );
+}
+
 export default function AdminPaymentSettings() {
   const [reg, setReg] = useState(null);        // { active, providers:{id:{...}} }
   const [editing, setEditing] = useState(null); // provider id currently open
@@ -125,6 +156,8 @@ export default function AdminPaymentSettings() {
           );
         })}
       </div>
+
+      <PlatformUpiCard />
 
       <Card style={{ maxWidth: 640, marginTop: 16, background: "#f8f9fc" }}>
         <div style={{ fontSize: 12.5, color: "#55606f", lineHeight: 1.6 }}>
