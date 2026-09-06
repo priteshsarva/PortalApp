@@ -1196,6 +1196,8 @@ function SettingsPanel({ siteId }) {
       logo_url: s.logo_url || "",
       favicon_url: s.favicon_url || "",
       whatsapp: s.whatsapp || "",
+      upi_id: s.upi_id || "",
+      upi_name: s.upi_name || "",
       email: s.email || "",
       phone: s.phone || "",
       announcement: s.announcement || "",
@@ -1276,6 +1278,15 @@ function SettingsPanel({ siteId }) {
         <Field label="WhatsApp number (checkout)"><input style={inputStyle} value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="+91 98765 43210" /></Field>
         <Field label="Contact email"><input style={inputStyle} value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
         <Field label="Contact phone"><input style={inputStyle} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+      </div>
+
+      <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>UPI payments</div>
+      <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>
+        Your own UPI ID — any app works (PhonePe, Google Pay, Paytm). At checkout, buyers see a QR + “Pay in UPI app” button that pays you directly, then send you the payment screenshot on WhatsApp to confirm. Leave blank to keep WhatsApp-only checkout.
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="UPI ID"><input style={inputStyle} value={form.upi_id} onChange={(e) => set("upi_id", e.target.value.trim())} placeholder="yourname@ptyes / yourname@okhdfcbank" /></Field>
+        <Field label="Payee name (shown in the UPI app)"><input style={inputStyle} value={form.upi_name} onChange={(e) => set("upi_name", e.target.value)} placeholder="Defaults to your store name" /></Field>
       </div>
 
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>Colour palette</div>
