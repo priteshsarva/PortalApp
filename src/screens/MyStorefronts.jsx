@@ -221,6 +221,8 @@ function StoreDetail({ site, onBack, onChanged }) {
           <div style={{ height: 18 }} />
           <PaymentPanel site={site} />
           <div style={{ height: 18 }} />
+          <FulfilmentPanel site={site} onChanged={onChanged} />
+          <div style={{ height: 18 }} />
           <OrdersPanel siteId={site.id} />
         </>
       )}
@@ -1452,6 +1454,42 @@ function AnalyticsPanel({ site }) {
   );
 }
 
+// Retailer: default fulfilment route + how buyers pay (plan-gated). A store that
+// carries a wholesale source is forced to platform-held payments.
+function FulfilmentPanel({ site }) {
+  const [ful, setFul] = useState(site.fulfilment_mode || "via_retailer");
+  const [pm, setPm] = useState(site.payout_mode || "direct");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState(null);
+  async function saveFul(v) { setFul(v); setMsg(""); setErr(null); try { await api.setFulfilmentMode(site.id, v); setMsg("Saved."); } catch (e) { setErr(e); setFul(site.fulfilment_mode || "via_retailer"); } }
+  async function savePm(v) { setPm(v); setMsg(""); setErr(null); try { await api.setPayoutMode(site.id, v); setMsg("Saved."); } catch (e) { setErr(e); setPm(site.payout_mode || "direct"); } }
+  return (
+    <Card>
+      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Fulfilment &amp; payments</div>
+      <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>How wholesale orders are shipped, and where buyer payments go.</div>
+      {err && <ErrorNote error={err} />}
+      {msg && <div style={{ fontSize: 12, color: "#2c6e2c", marginBottom: 8 }}>{msg}</div>}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="Default fulfilment for wholesale orders">
+          <select style={inputStyle} value={ful} onChange={(e) => saveFul(e.target.value)}>
+            <option value="via_retailer">Wholesaler ships to me, I ship to customer</option>
+            <option value="direct_to_customer">Wholesaler ships direct to my customer</option>
+          </select>
+        </Field>
+        <Field label="Payment routing">
+          <select style={inputStyle} value={pm} onChange={(e) => savePm(e.target.value)} disabled={site.has_wholesale || !site.allow_payout_routing}>
+            <option value="direct">Direct to my UPI</option>
+            <option value="platform">Platform-held wallet</option>
+          </select>
+          {site.has_wholesale
+            ? <div style={{ fontSize: 11.5, color: "#8a6100", marginTop: 4 }}>Forced to platform-held — this store sells wholesale products.</div>
+            : !site.allow_payout_routing && <div style={{ fontSize: 11.5, color: "#8a93a3", marginTop: 4 }}>Payment routing needs a higher plan. Direct-to-UPI is active.</div>}
+        </Field>
+      </div>
+    </Card>
+  );
+}
+
 function OrdersPanel({ siteId }) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
@@ -1486,6 +1524,10 @@ function OrdersPanel({ siteId }) {
     const utr = window.prompt(`Confirm you've received payment for ${o.order_no}.\nUTR / reference (optional):`, "") ?? undefined;
     if (utr === undefined) return;
     try { await api.verifyOrderPayment(siteId, o.id, utr || undefined); load(); }
+    catch (e) { alert(e.message); }
+  }
+  async function changeFulfilment(o, mode) {
+    try { await api.setOrderFulfilment(siteId, o.id, mode); load(); }
     catch (e) { alert(e.message); }
   }
 
@@ -1542,7 +1584,15 @@ function OrdersPanel({ siteId }) {
                           {o.payment_status || "unpaid"}
                         </span>
                         {o.payment_status !== "verified" && <Btn small tone="lime" onClick={() => verifyPayment(o)}>Verify payment</Btn>}
-                        {o.payment_status === "verified" && <Btn small onClick={() => setShip(o)}>Ship to customer</Btn>}
+                        {o.payment_status === "verified" && o.fulfilment_mode !== "direct_to_customer" && <Btn small onClick={() => setShip(o)}>Ship to customer</Btn>}
+                        {o.fulfilment_mode === "direct_to_customer" && <span style={{ fontSize: 11.5, color: "#2b5bb5" }}>Wholesaler ships direct to the customer</span>}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "#6b7688" }}>
+                        <span>Fulfilment:</span>
+                        <select style={{ ...inputStyle, maxWidth: 220, padding: "5px 8px" }} value={o.fulfilment_mode || "via_retailer"} onChange={(e) => changeFulfilment(o, e.target.value)}>
+                          <option value="via_retailer">Wholesaler → me → customer</option>
+                          <option value="direct_to_customer">Wholesaler ships direct to customer</option>
+                        </select>
                       </div>
                       <Field label="Status">
                         <select style={{ ...inputStyle, maxWidth: 200 }} value={o.status} onChange={(e) => changeStatus(o.id, e.target.value)}>

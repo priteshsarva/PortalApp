@@ -65,6 +65,8 @@ export default function AdminHostedSites() {
                 )}
               </div>
 
+              <FeesRow site={s} />
+
               <div style={{ marginTop: 12, display: "flex", gap: 7, flexWrap: "wrap" }}>
                 {s.status === "pending" && (
                   <>
@@ -95,6 +97,34 @@ export default function AdminHostedSites() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Per-store fee + payment-routing override (admin). Gateway fee blank = platform default.
+function FeesRow({ site }) {
+  const [fee, setFee] = React.useState(site.gateway_fee_pct ?? "");
+  const [pm, setPm] = React.useState(site.payout_mode || "direct");
+  const [msg, setMsg] = React.useState("");
+  async function save() {
+    setMsg("saving…");
+    try { await api.adminSetSiteFees(site.id, { gateway_fee_pct: fee === "" ? null : Number(fee), payout_mode: pm }); setMsg("✓ saved"); setTimeout(() => setMsg(""), 1500); }
+    catch (e) { setMsg(e.message); }
+  }
+  return (
+    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#6b7688", background: "#f8f9fc", borderRadius: 8, padding: "8px 10px" }}>
+      <span>Gateway fee %</span>
+      <input value={fee} onChange={(e) => setFee(e.target.value)} placeholder="default" inputMode="decimal"
+        style={{ width: 70, border: "1px solid #d4d9e3", borderRadius: 6, padding: "4px 7px", fontSize: 12 }} />
+      <span>Payout</span>
+      <select value={pm} onChange={(e) => setPm(e.target.value)} disabled={site.has_wholesale}
+        style={{ border: "1px solid #d4d9e3", borderRadius: 6, padding: "4px 7px", fontSize: 12 }}>
+        <option value="direct">Direct</option>
+        <option value="platform">Platform</option>
+      </select>
+      {site.has_wholesale && <span style={{ color: "#8a6100" }}>(wholesale → forced platform)</span>}
+      <button onClick={save} style={{ border: "1px solid #16361b", background: "#16361b", color: "#C8FF3D", borderRadius: 6, padding: "4px 12px", fontSize: 12, cursor: "pointer" }}>Save</button>
+      {msg && <span style={{ color: msg.startsWith("✓") ? "#2c6e2c" : "#b23a48" }}>{msg}</span>}
     </div>
   );
 }

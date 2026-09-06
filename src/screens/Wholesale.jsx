@@ -68,34 +68,58 @@ function Sales() {
   useEffect(load, []);
   if (error) return <Card><ErrorNote error={error} /></Card>;
   if (!orders) return <Card><Spinner /></Card>;
-  if (!orders.length) return <Card><Empty msg="No orders for your products yet." /></Card>;
+
+  const paid = orders.filter((o) => o.payment_status === "verified");
+  const totalSales = orders.reduce((s, o) => s + Number(o.my_total || 0), 0);
+  const toShip = paid.length; // verified orders awaiting your shipment
+  const kpi = (label, val, color) => (
+    <Card style={{ flex: 1, minWidth: 130 }}><div style={{ fontSize: 11.5, color: "#6b7688", fontWeight: 700 }}>{label}</div><div style={{ fontSize: 24, fontWeight: 800, color: color || "#1b2230" }}>{val}</div></Card>
+  );
+
   return (
-    <Card>
-      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Your sales</div>
-      <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>Orders that include your products, across every retailer. Ship to the retailer, then upload parcel photos to release your funds.</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {orders.map((o) => (
-          <div key={o.id} style={{ border: "1px solid #eef1f6", borderRadius: 10, padding: "10px 13px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.order_no} <span style={{ fontWeight: 500, color: "#9aa3b2" }}>· via {o.store_name}</span></div>
-                <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>
-                  {o.items.map((it) => `${it.product_name}${it.size ? ` (${it.size})` : ""} ×${it.qty}`).join(", ")}
-                </div>
-                <div style={{ fontSize: 12, color: "#42505f", marginTop: 2 }}>Your share: <strong>₹{Number(o.my_total).toLocaleString("en-IN")}</strong> · ship to: {[o.address?.city, o.address?.state, o.address?.pincode].filter(Boolean).join(", ")}</div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                <Badge status={o.payment_status === "verified" ? "active" : "pending"} />
-                {o.payment_status === "verified"
-                  ? <Btn small tone="lime" onClick={() => setShip(o)}>Ship to retailer</Btn>
-                  : <span style={{ fontSize: 11, color: "#8a6100" }}>awaiting payment</span>}
-              </div>
-            </div>
-          </div>
-        ))}
+    <div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        {kpi("ORDERS", orders.length)}
+        {kpi("YOUR SALES", "₹" + totalSales.toLocaleString("en-IN"), "#14663a")}
+        {kpi("TO SHIP", toShip, toShip ? "#8a6100" : "#1b2230")}
       </div>
-      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg="wholesaler_to_retailer" onClose={() => setShip(null)} onDone={() => { setShip(null); load(); }} />}
-    </Card>
+      <Card>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Your sales</div>
+        <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>Orders that include your products, across every retailer. Ship, then upload parcel photos to release your funds.</div>
+        {!orders.length ? <Empty msg="No orders for your products yet." /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {orders.map((o) => {
+              const direct = o.fulfilment_mode === "direct_to_customer";
+              const shipTo = direct
+                ? `${o.buyer_name || ""} · ${[o.address?.line1, o.address?.city, o.address?.state, o.address?.pincode].filter(Boolean).join(", ")}${o.buyer_phone ? ` · 📞 ${o.buyer_phone}` : ""}`
+                : [o.address?.city, o.address?.state, o.address?.pincode].filter(Boolean).join(", ");
+              return (
+                <div key={o.id} style={{ border: "1px solid #eef1f6", borderRadius: 10, padding: "10px 13px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.order_no} <span style={{ fontWeight: 500, color: "#9aa3b2" }}>· via {o.store_name}</span>
+                        {direct && <span style={{ fontSize: 10.5, fontWeight: 700, marginLeft: 6, padding: "2px 7px", borderRadius: 999, background: "#eef4ff", color: "#2b5bb5" }}>ship direct to customer</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>{o.items.map((it) => `${it.product_name}${it.size ? ` (${it.size})` : ""} ×${it.qty}`).join(", ")}</div>
+                      <div style={{ fontSize: 12, color: "#42505f", marginTop: 2 }}>Your share: <strong>₹{Number(o.my_total).toLocaleString("en-IN")}</strong> · {direct ? "ship to customer" : "ship to retailer"}: {shipTo}</div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                      <Badge status={o.payment_status === "verified" ? "active" : "pending"} />
+                      {o.payment_status === "verified"
+                        ? <Btn small tone="lime" onClick={() => setShip(o)}>{direct ? "Ship to customer" : "Ship to retailer"}</Btn>
+                        : <span style={{ fontSize: 11, color: "#8a6100" }}>awaiting payment</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no}
+        leg={ship.fulfilment_mode === "direct_to_customer" ? "wholesaler_to_customer" : "wholesaler_to_retailer"}
+        onClose={() => setShip(null)} onDone={() => { setShip(null); load(); }} />}
+    </div>
   );
 }
 

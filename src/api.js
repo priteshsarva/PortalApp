@@ -84,6 +84,10 @@ export const api = {
   adminShipments: (status) => req(`/portal/admin/shipments${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   adminUpdateShipment: (id, body) => req(`/portal/admin/shipments/${id}`, { method: "PATCH", body }),
   adminPurgePreview: (grace) => req(`/portal/admin/shipments/purge-preview${grace ? `?grace=${grace}` : ""}`),
+  setFulfilmentMode: (siteId, fulfilment_mode) => req(`/portal/hosted-sites/${siteId}/fulfilment-mode`, { method: "PUT", body: { fulfilment_mode } }),
+  setOrderFulfilment: (siteId, orderId, fulfilment_mode) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/fulfilment`, { method: "PATCH", body: { fulfilment_mode } }),
+  setPayoutMode: (siteId, payout_mode) => req(`/portal/hosted-sites/${siteId}/payout-mode`, { method: "PUT", body: { payout_mode } }),
+  adminSetSiteFees: (siteId, body) => req(`/portal/admin/hosted-sites/${siteId}/fees`, { method: "PATCH", body }),
   uploadShipmentPhotos: async (files) => {
     const fd = new FormData();
     Array.from(files).forEach((f) => fd.append("files", f));
