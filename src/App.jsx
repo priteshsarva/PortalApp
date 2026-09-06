@@ -30,6 +30,7 @@ import AdminAnalytics from "./screens/AdminAnalytics.jsx";
 import AdminBilling from "./screens/AdminBilling.jsx";
 import Wholesale from "./screens/Wholesale.jsx";
 import AdminWholesalers from "./screens/AdminWholesalers.jsx";
+import Wallet from "./screens/Wallet.jsx";
 import WelcomeTour from "./Tour.jsx";
 
 const clientNav = [
@@ -41,6 +42,7 @@ const clientNav = [
   ["sites", "WordPress plugin", Globe],
   ["plugin", "Set up plugin", Plug],
   ["wholesale", "Sell wholesale", Store],
+  ["wallet", "Wallet", CreditCard],
   ["billing", "Billing", Receipt],
   ["notifications", "Notifications", Bell],
   // Hidden until built: "analytics" (per-store analytics live on each store),
@@ -111,6 +113,7 @@ export default function App() {
         case "search": return <CatalogueSearch />;
         case "billing": return <Billing />;
         case "wholesale": return <Wholesale />;
+        case "wallet": return <Wallet />;
         case "notifications": return <Notifications />;
         default: return null;
       }

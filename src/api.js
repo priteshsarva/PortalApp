@@ -63,6 +63,16 @@ export const api = {
   adminSetActiveProvider: (id) => req("/portal/admin/settings/payment/active", { method: "PUT", body: { id } }),
   adminGetPlatformUpi: () => req("/portal/admin/settings/platform-upi"),
   adminSavePlatformUpi: (body) => req("/portal/admin/settings/platform-upi", { method: "PUT", body }),
+  adminGetPlatformConfig: () => req("/portal/admin/settings/platform-config"),
+  adminSavePlatformConfig: (body) => req("/portal/admin/settings/platform-config", { method: "PUT", body }),
+
+  // ---- wallet + payouts ----
+  wallet: () => req("/portal/wallet"),
+  savePayoutDetails: (body) => req("/portal/wallet/payout-details", { method: "PUT", body }),
+  acceptPayoutTerms: () => req("/portal/wallet/accept-terms", { method: "POST" }),
+  requestPayout: (body) => req("/portal/wallet/payout", { method: "POST", body }),
+  adminPayouts: (status) => req(`/portal/admin/payouts${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  adminUpdatePayout: (id, body) => req(`/portal/admin/payouts/${id}`, { method: "PATCH", body }),
 
   // ---- admin: invoices (manual UPI reconciliation) ----
   adminInvoices: (status) => req(`/portal/admin/invoices${status ? `?status=${encodeURIComponent(status)}` : ""}`),

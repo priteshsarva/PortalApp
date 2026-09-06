@@ -7,9 +7,80 @@ import { api } from "../api.js";
 import { PageHead, Card, Btn, Badge, Spinner, ErrorNote, Empty, fmtDate } from "../ui.jsx";
 
 const money = (inv) => `${inv.currency || "INR"} ${Number(inv.amount || 0).toLocaleString("en-IN")}`;
+const rupees = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const FILTERS = [["pending", "Awaiting confirmation"], ["created", "Unpaid"], ["paid", "Paid"], ["", "All"]];
 
 export default function AdminBilling() {
+  const [tab, setTab] = useState("invoices");
+  return (
+    <div>
+      <PageHead title="Billing" sub="Confirm invoice payments and process vendor payouts." />
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        {[["invoices", "Invoices"], ["payouts", "Payouts"]].map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)}
+            style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#C8FF3D" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
+        ))}
+      </div>
+      {tab === "invoices" ? <Invoices /> : <Payouts />}
+    </div>
+  );
+}
+
+function Payouts() {
+  const [rows, setRows] = useState(null);
+  const [status, setStatus] = useState("requested");
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const P = [["requested", "Requested"], ["processing", "Processing"], ["paid", "Paid"], ["cancelled", "Cancelled"], ["", "All"]];
+  function load() { setRows(null); api.adminPayouts(status || undefined).then((r) => setRows(r.payouts || [])).catch(setError); }
+  useEffect(load, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function act(p, next) {
+    let utr, note;
+    if (next === "paid") { utr = window.prompt(`Mark ${rupees(p.amount)} to ${p.user_email} as PAID.\nUTR / reference (optional):`, ""); if (utr === null) return; }
+    if (next === "cancelled") { note = window.prompt("Cancel reason (optional):", "") ?? ""; }
+    setBusy(p.id);
+    try { await api.adminUpdatePayout(p.id, { status: next, utr: utr || undefined, note }); load(); }
+    catch (e) { alert(e.message); } finally { setBusy(null); }
+  }
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        {P.map(([s, label]) => (
+          <button key={s || "all"} onClick={() => setStatus(s)}
+            style={{ border: status === s ? "1px solid #16361b" : "1px solid #d4d9e3", background: status === s ? "#16361b" : "#fff", color: status === s ? "#C8FF3D" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>{label}</button>
+        ))}
+      </div>
+      <ErrorNote error={error} />
+      {!rows ? <Spinner /> : rows.length === 0 ? <Card><Empty msg="No payouts in this view." /></Card> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {rows.map((p) => (
+            <Card key={p.id}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 700 }}>{rupees(p.amount)} <span style={{ fontWeight: 500, color: "#9aa3b2" }}>· {p.user_name || p.user_email}</span></div>
+                  <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>
+                    {p.method.toUpperCase()}: {p.method === "upi" ? (p.destination?.upi || "—") : JSON.stringify(p.destination)} · {fmtDate(p.created_at)}
+                    {p.utr ? ` · UTR ${p.utr}` : ""} · wallet {rupees(p.wallet_available)}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <Badge status={p.status === "paid" ? "active" : p.status === "cancelled" ? "rejected" : "pending"} />
+                  {p.status === "requested" && <Btn small onClick={() => act(p, "processing")} disabled={busy === p.id}>Mark processing</Btn>}
+                  {(p.status === "requested" || p.status === "processing") && <>
+                    <Btn small tone="lime" onClick={() => act(p, "paid")} disabled={busy === p.id}>Mark paid</Btn>
+                    <Btn small tone="ghost" onClick={() => act(p, "cancelled")} disabled={busy === p.id}>Cancel</Btn>
+                  </>}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Invoices() {
   const [invoices, setInvoices] = useState(null);
   const [status, setStatus] = useState("pending");
   const [error, setError] = useState(null);
@@ -31,7 +102,6 @@ export default function AdminBilling() {
 
   return (
     <div>
-      <PageHead title="Billing" sub="Confirm UPI/manual payments and review invoices. Confirming activates the vendor's shop." />
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
         {FILTERS.map(([s, label]) => (
           <button key={s || "all"} onClick={() => setStatus(s)}

@@ -57,6 +57,42 @@ function PlatformUpiCard() {
   );
 }
 
+// Platform economics: our fee %, the default payment-gateway fee %, how often
+// wholesale listings must be re-verified, and the payout terms vendors accept.
+function PlatformConfigCard() {
+  const [f, setF] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState(null);
+  useEffect(() => { api.adminGetPlatformConfig().then((r) => setF(r.config)).catch(setErr); }, []);
+  async function save() {
+    setBusy(true); setErr(null); setMsg("");
+    try { const r = await api.adminSavePlatformConfig(f); setF(r.config); setMsg("Saved."); }
+    catch (e) { setErr(e); } finally { setBusy(false); }
+  }
+  if (!f) return null;
+  const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
+  return (
+    <Card style={{ maxWidth: 640, marginTop: 16 }}>
+      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Fees &amp; platform settings</div>
+      <div style={{ fontSize: 12.5, color: "#68727f", marginBottom: 14 }}>
+        Applies to platform-held (wallet) orders. Gateway fee here is the default; you can override it per store. Re-verify days controls how often wholesalers must reconfirm a listing before it's auto-hidden.
+      </div>
+      <ErrorNote error={err} />
+      {msg && <div style={{ background: "#eef7ee", border: "1px solid #cbe5cb", color: "#2c6e2c", padding: "8px 12px", borderRadius: 8, marginBottom: 12, fontSize: 12.5 }}>{msg}</div>}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+        <Field label="Platform fee %"><input style={inputStyle} value={f.fee_pct} onChange={(e) => set("fee_pct", e.target.value)} inputMode="decimal" /></Field>
+        <Field label="Default gateway fee %"><input style={inputStyle} value={f.gateway_fee_pct} onChange={(e) => set("gateway_fee_pct", e.target.value)} inputMode="decimal" /></Field>
+        <Field label="Re-verify listings every (days)"><input style={inputStyle} value={f.listing_reverify_days} onChange={(e) => set("listing_reverify_days", e.target.value)} inputMode="numeric" /></Field>
+      </div>
+      <Field label="Payout terms (shown to vendors on their wallet before they can withdraw)">
+        <textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical", fontFamily: "inherit" }} value={f.payout_terms_text} onChange={(e) => set("payout_terms_text", e.target.value)} placeholder="e.g. Payouts are released only after parcel photos are approved. Minimum ₹1000. Processed within 3 business days." />
+      </Field>
+      <Btn tone="lime" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</Btn>
+    </Card>
+  );
+}
+
 export default function AdminPaymentSettings() {
   const [reg, setReg] = useState(null);        // { active, providers:{id:{...}} }
   const [editing, setEditing] = useState(null); // provider id currently open
@@ -158,6 +194,7 @@ export default function AdminPaymentSettings() {
       </div>
 
       <PlatformUpiCard />
+      <PlatformConfigCard />
 
       <Card style={{ maxWidth: 640, marginTop: 16, background: "#f8f9fc" }}>
         <div style={{ fontSize: 12.5, color: "#55606f", lineHeight: 1.6 }}>
