@@ -34,6 +34,10 @@ import Wallet from "./screens/Wallet.jsx";
 import AdminShipments from "./screens/AdminShipments.jsx";
 import WelcomeTour from "./Tour.jsx";
 
+// Wholesale-seller feature (vendors listing their own products) is parked for now
+// — flip to true to bring it back. Platform payments / wallet / shipments stay on.
+const WHOLESALE_ENABLED = false;
+
 const clientNav = [
   ["dashboard", "Home", LayoutDashboard],
   ["storefront", "My online store", LayoutTemplate],
@@ -56,7 +60,7 @@ const adminNav = [
   ["hostedOrders", "Store orders", ClipboardList],
   ["plans", "Plans", Receipt],
   ["billingAdmin", "Billing", CreditCard],
-  ["wholesalers", "Wholesale", Store],
+  ...(WHOLESALE_ENABLED ? [["wholesalers", "Wholesale", Store]] : []),
   ["shipments", "Shipments", ClipboardList],
   ["users", "Clients", Users],
   ["sources", "Product sources", Database],
@@ -67,6 +71,19 @@ const adminNav = [
   ["notifications", "Notifications", Bell],
   // Hidden until built: "announce" (announcements), "audit" (audit-log viewer).
 ];
+
+function ComingSoon({ title, note }) {
+  return (
+    <div style={{ maxWidth: 520, margin: "60px auto", textAlign: "center", padding: "0 16px" }}>
+      <div style={{ width: 60, height: 60, borderRadius: 16, background: "#eef1f6", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
+        <Store size={28} color="#6b7688" />
+      </div>
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>{title}</h1>
+      <div style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#8a6100", background: "#fff6e5", border: "1px solid #f0d98a", borderRadius: 999, padding: "4px 12px", marginBottom: 14 }}>Coming soon</div>
+      <p style={{ fontSize: 14, color: "#6b7688", lineHeight: 1.6 }}>{note}</p>
+    </div>
+  );
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -114,7 +131,7 @@ export default function App() {
         case "plugin": return <PluginSetup />;
         case "search": return <CatalogueSearch />;
         case "billing": return <Billing />;
-        case "wholesale": return <Wholesale />;
+        case "wholesale": return WHOLESALE_ENABLED ? <Wholesale /> : <ComingSoon title="Sell wholesale" note="List your own products for other stores to sell. We're putting the finishing touches on this — it'll be here soon." />;
         case "wallet": return <Wallet />;
         case "notifications": return <Notifications />;
         default: return null;
@@ -130,7 +147,7 @@ export default function App() {
       case "hostedOrders": return <AdminOrders />;
       case "plans": return <AdminPlans />;
       case "billingAdmin": return <AdminBilling />;
-      case "wholesalers": return <AdminWholesalers />;
+      case "wholesalers": return WHOLESALE_ENABLED ? <AdminWholesalers /> : <ComingSoon title="Wholesale" note="Supplier onboarding is coming soon." />;
       case "shipments": return <AdminShipments />;
       case "users": return <AdminClients />;
       case "email": return <AdminEmailSettings />;

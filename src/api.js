@@ -55,6 +55,7 @@ export const api = {
   adminSaveBrandMap: (raw, canonical, secondary) => req("/portal/admin/brand-map", { method: "PUT", body: { raw, canonical, secondary } }),
   adminDeleteBrandMap: (raw) => req(`/portal/admin/brand-map/${encodeURIComponent(raw)}`, { method: "DELETE" }),
   adminBrands: (q) => req(`/portal/admin/brands${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  adminEmailPreview: (type) => req(`/portal/admin/settings/email-preview${type ? `?type=${encodeURIComponent(type)}` : ""}`),
   adminGetSmtp: () => req("/portal/admin/settings/smtp"),
   adminSaveSmtp: (cfg) => req("/portal/admin/settings/smtp", { method: "PUT", body: cfg }),
   adminTestSmtp: (to) => req("/portal/admin/settings/smtp/test", { method: "POST", body: { to } }),

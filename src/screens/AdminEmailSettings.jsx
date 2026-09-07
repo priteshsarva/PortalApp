@@ -63,6 +63,40 @@ export default function AdminEmailSettings() {
         </div>
         <div style={{ fontSize: 12, color: "#6b7688", marginTop: 8 }}>Save first, then test — the test uses the saved config.</div>
       </Card>
+
+      <EmailTemplatePreview />
     </div>
+  );
+}
+
+// Live preview of every transactional email (order lifecycle + payouts), exactly
+// as customers/vendors receive them.
+function EmailTemplatePreview() {
+  const [types, setTypes] = useState([]);
+  const [type, setType] = useState("");
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => { load(""); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  function load(t) {
+    setError(null);
+    api.adminEmailPreview(t).then((r) => { setData(r); setType(r.type); if (r.types) setTypes(r.types); }).catch(setError);
+  }
+
+  return (
+    <Card style={{ maxWidth: 760, marginTop: 16 }}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Email templates</div>
+      <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>Preview the transactional emails sent on every order and payout action.</div>
+      <ErrorNote error={error} />
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+        <select style={{ ...inputStyle, maxWidth: 320 }} value={type} onChange={(e) => load(e.target.value)}>
+          {types.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+        {data?.subject && <span style={{ fontSize: 12.5, color: "#42505f" }}><strong>Subject:</strong> {data.subject}</span>}
+      </div>
+      {data?.html
+        ? <iframe title="email preview" srcDoc={data.html} style={{ width: "100%", height: 640, border: "1px solid #e4e4e7", borderRadius: 8, background: "#fff" }} />
+        : <Spinner />}
+    </Card>
   );
 }
