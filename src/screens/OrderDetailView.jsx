@@ -89,9 +89,15 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
         {/* Shipments / fulfilment proof */}
         <div style={box}>
           <div style={hd}>Fulfilment</div>
-          <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 8 }}>
-            Route: {order.fulfilment_mode === "direct_to_customer" ? "wholesaler ships direct to customer" : "wholesaler → retailer → customer"}
-          </div>
+          {(() => {
+            // Only call it a wholesaler route if the order actually has wholesale
+            // items. A retailer's own (platform) products = the retailer ships.
+            const hasWholesale = items.some((it) => it.cost_price != null || it.db_name === "wholesale");
+            const route = order.fulfilment_mode === "direct_to_customer" && hasWholesale ? "Wholesaler ships directly to the customer"
+              : hasWholesale ? "Wholesaler → you → customer"
+              : "You ship to the customer";
+            return <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 8 }}>Route: {route}</div>;
+          })()}
           {/* Ship actions. Vendor uploads proof; admin can mark shipped directly. */}
           {(() => {
             const verified = order.payment_status === "verified";
@@ -99,7 +105,7 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
             const custShip = shipments.find((s) => s.leg === custLeg);
             const done = order.status === "completed" || (custShip && custShip.status === "approved");
             if (!verified) return <div style={{ fontSize: 12, color: "#8a6100", marginBottom: 10 }}>Awaiting payment verification before shipping.</div>;
-            if (done) return null;
+            if (done) return <div style={{ fontSize: 12.5, color: "#14663a", fontWeight: 600, marginBottom: 10 }}>✓ Shipped &amp; fulfilled</div>;
             return (
               <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 {role === "vendor" && onShip && order.fulfilment_mode !== "direct_to_customer" && (
