@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { C, PageHead, Card, Badge, Spinner, ErrorNote, Empty, fmtDate } from "../ui.jsx";
+import OrderDetailView from "./OrderDetailView.jsx";
 
-const ORDER_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+const ORDER_STATUSES = ["pending", "processing", "on-hold", "completed", "cancelled", "refunded"];
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState(null);
@@ -26,6 +27,15 @@ export default function AdminOrders() {
       try { const r = await api.adminOrder(id); setDetail((d) => ({ ...d, [id]: r })); }
       catch (e) { setError(e); }
     }
+  }
+  async function reloadDetail(id) {
+    try { const r = await api.adminOrder(id); setDetail((d) => ({ ...d, [id]: r })); } catch { /* ignore */ }
+  }
+  async function adminVerify(id, utr) {
+    try { await api.adminVerifyOrderPayment(id, utr); reloadDetail(id); load(); } catch (e) { alert(e.message); }
+  }
+  async function adminStatus(id, status) {
+    try { await api.adminSetOrderStatus(id, status); reloadDetail(id); load(); } catch (e) { alert(e.message); }
   }
 
   return (
@@ -60,19 +70,9 @@ export default function AdminOrders() {
               {openId === o.id && (
                 <div style={{ padding: "0 16px 14px", borderTop: "1px solid #eef1f6" }}>
                   {!detail[o.id] ? <Spinner msg="Loading…" /> : (
-                    <div style={{ margin: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
-                      {detail[o.id].items.map((it) => (
-                        <div key={it.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#42505f", gap: 10 }}>
-                          <span>
-                            {it.product_name}{it.size ? ` (Size ${it.size})` : ""} × {it.qty}
-                            {it.product_url && <> · <a href={it.product_url} target="_blank" rel="noreferrer" style={{ color: "#6b7688", textDecoration: "underline" }}>source ↗</a></>}
-                          </span>
-                          <span style={{ whiteSpace: "nowrap" }}>₹{Number(it.line_total).toLocaleString("en-IN")}</span>
-                        </div>
-                      ))}
-                      <div style={{ fontSize: 12, color: "#6b7688", marginTop: 4 }}>
-                        📍 {[o.address.line1, o.address.city, o.address.state, o.address.pincode].filter(Boolean).join(", ")}
-                      </div>
+                    <div style={{ paddingTop: 12 }}>
+                      <OrderDetailView data={detail[o.id]} role="admin"
+                        onVerify={(utr) => adminVerify(o.id, utr)} onStatus={(s) => adminStatus(o.id, s)} />
                     </div>
                   )}
                 </div>

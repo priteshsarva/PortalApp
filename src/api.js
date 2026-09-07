@@ -75,6 +75,7 @@ export const api = {
   adminUpdatePayout: (id, body) => req(`/portal/admin/payouts/${id}`, { method: "PATCH", body }),
   adminSetWalletThreshold: (userId, payout_threshold) => req(`/portal/admin/wallets/${userId}`, { method: "PATCH", body: { payout_threshold } }),
   adminVerifyOrderPayment: (orderId, utr) => req(`/portal/admin/orders/${orderId}/verify-payment`, { method: "POST", body: { utr } }),
+  adminSetOrderStatus: (orderId, status) => req(`/portal/admin/orders/${orderId}/status`, { method: "PATCH", body: { status } }),
 
   // ---- fulfilment: payment verify + shipments ----
   verifyOrderPayment: (siteId, orderId, utr) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/verify-payment`, { method: "POST", body: { utr } }),

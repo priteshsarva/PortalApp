@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import ShipmentModal from "../components/ShipmentModal.jsx";
 import { C, PageHead, Card, Btn, Badge, Field, inputStyle, Spinner, ErrorNote, Empty, Modal, fmtDate, storeUrl, useIsMobile } from "../ui.jsx";
 import AnalyticsView, { exportAnalyticsCsv } from "../components/AnalyticsView.jsx";
+import OrderDetailView from "./OrderDetailView.jsx";
 
 const ORDER_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
 
@@ -1515,16 +1516,17 @@ function OrdersPanel({ siteId }) {
   }
 
   async function changeStatus(id, status) {
-    try { await api.updateHostedSiteOrderStatus(siteId, id, status); load(); }
+    try { await api.updateHostedSiteOrderStatus(siteId, id, status); reloadDetail(id); load(); }
     catch (e) { alert(e.message); }
   }
 
   const [ship, setShip] = useState(null); // order for the ship-to-customer modal
-  async function verifyPayment(o) {
-    const utr = window.prompt(`Confirm you've received payment for ${o.order_no}.\nUTR / reference (optional):`, "") ?? undefined;
-    if (utr === undefined) return;
-    try { await api.verifyOrderPayment(siteId, o.id, utr || undefined); load(); }
+  async function verifyPayment(o, utr) {
+    try { await api.verifyOrderPayment(siteId, o.id, utr || undefined); reloadDetail(o.id); load(); }
     catch (e) { alert(e.message); }
+  }
+  async function reloadDetail(id) {
+    try { const r = await api.hostedSiteOrder(siteId, id); setDetail((d) => ({ ...d, [id]: r })); } catch { /* ignore */ }
   }
   async function changeFulfilment(o, mode) {
     try { await api.setOrderFulfilment(siteId, o.id, mode); load(); }
@@ -1560,46 +1562,19 @@ function OrdersPanel({ siteId }) {
               {openId === o.id && (
                 <div style={{ padding: "0 14px 14px", borderTop: "1px solid #eef1f6" }}>
                   {!detail[o.id] ? <Spinner msg="Loading…" /> : (
-                    <>
-                      <div style={{ margin: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
-                        {detail[o.id].items.map((it) => (
-                          <div key={it.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#42505f", gap: 10 }}>
-                            <span>
-                              {it.page_url
-                                ? <a href={it.page_url} target="_blank" rel="noreferrer" style={{ color: "#3b6fd8", textDecoration: "none" }}>{it.product_name}</a>
-                                : it.product_name}
-                              {it.size ? ` (Size ${it.size})` : ""} × {it.qty}
-                              {it.product_url && <> · <a href={it.product_url} target="_blank" rel="noreferrer" style={{ color: "#6b7688", textDecoration: "underline" }}>source ↗</a></>}
-                            </span>
-                            <span style={{ whiteSpace: "nowrap" }}>₹{Number(it.line_total).toLocaleString("en-IN")}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 12 }}>
-                        📍 {[o.address.line1, o.address.city, o.address.state, o.address.pincode].filter(Boolean).join(", ")} · 📞 {o.buyer_phone}
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
-                        <span style={{ fontSize: 12, color: "#6b7688" }}>Payment:</span>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: o.payment_status === "verified" ? "#e8f7ee" : "#fff6e5", color: o.payment_status === "verified" ? "#14663a" : "#8a6100" }}>
-                          {o.payment_status || "unpaid"}
-                        </span>
-                        {o.payment_status !== "verified" && <Btn small tone="lime" onClick={() => verifyPayment(o)}>Verify payment</Btn>}
-                        {o.payment_status === "verified" && o.fulfilment_mode !== "direct_to_customer" && <Btn small onClick={() => setShip(o)}>Ship to customer</Btn>}
-                        {o.fulfilment_mode === "direct_to_customer" && <span style={{ fontSize: 11.5, color: "#2b5bb5" }}>Wholesaler ships direct to the customer</span>}
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10, fontSize: 12, color: "#6b7688" }}>
+                    <div style={{ paddingTop: 12 }}>
+                      <OrderDetailView data={detail[o.id]} role="vendor"
+                        onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o.id, s)} />
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 12, fontSize: 12, color: "#6b7688" }}>
                         <span>Fulfilment:</span>
-                        <select style={{ ...inputStyle, maxWidth: 220, padding: "5px 8px" }} value={o.fulfilment_mode || "via_retailer"} onChange={(e) => changeFulfilment(o, e.target.value)}>
+                        <select style={{ ...inputStyle, maxWidth: 240, padding: "5px 8px" }} value={o.fulfilment_mode || "via_retailer"} onChange={(e) => changeFulfilment(o, e.target.value)}>
                           <option value="via_retailer">Wholesaler → me → customer</option>
                           <option value="direct_to_customer">Wholesaler ships direct to customer</option>
                         </select>
+                        {o.payment_status === "verified" && o.fulfilment_mode !== "direct_to_customer" && <Btn small tone="lime" onClick={() => setShip(o)}>Ship to customer</Btn>}
+                        {o.fulfilment_mode === "direct_to_customer" && <span style={{ fontSize: 11.5, color: "#2b5bb5" }}>Wholesaler ships direct to the customer</span>}
                       </div>
-                      <Field label="Status">
-                        <select style={{ ...inputStyle, maxWidth: 200 }} value={o.status} onChange={(e) => changeStatus(o.id, e.target.value)}>
-                          {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </Field>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
