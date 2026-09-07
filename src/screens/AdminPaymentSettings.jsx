@@ -84,6 +84,7 @@ function PlatformConfigCard() {
         <Field label="Platform fee %"><input style={inputStyle} value={f.fee_pct} onChange={(e) => set("fee_pct", e.target.value)} inputMode="decimal" /></Field>
         <Field label="Default gateway fee %"><input style={inputStyle} value={f.gateway_fee_pct} onChange={(e) => set("gateway_fee_pct", e.target.value)} inputMode="decimal" /></Field>
         <Field label="Re-verify listings every (days)"><input style={inputStyle} value={f.listing_reverify_days} onChange={(e) => set("listing_reverify_days", e.target.value)} inputMode="numeric" /></Field>
+        <Field label="Default payout threshold (₹)"><input style={inputStyle} value={f.payout_threshold} onChange={(e) => set("payout_threshold", e.target.value)} inputMode="numeric" /></Field>
       </div>
       <Field label="Payout terms (shown to vendors on their wallet before they can withdraw)">
         <textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical", fontFamily: "inherit" }} value={f.payout_terms_text} onChange={(e) => set("payout_terms_text", e.target.value)} placeholder="e.g. Payouts are released only after parcel photos are approved. Minimum ₹1000. Processed within 3 business days." />

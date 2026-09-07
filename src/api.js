@@ -73,6 +73,8 @@ export const api = {
   requestPayout: (body) => req("/portal/wallet/payout", { method: "POST", body }),
   adminPayouts: (status) => req(`/portal/admin/payouts${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   adminUpdatePayout: (id, body) => req(`/portal/admin/payouts/${id}`, { method: "PATCH", body }),
+  adminSetWalletThreshold: (userId, payout_threshold) => req(`/portal/admin/wallets/${userId}`, { method: "PATCH", body: { payout_threshold } }),
+  adminVerifyOrderPayment: (orderId, utr) => req(`/portal/admin/orders/${orderId}/verify-payment`, { method: "POST", body: { utr } }),
 
   // ---- fulfilment: payment verify + shipments ----
   verifyOrderPayment: (siteId, orderId, utr) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/verify-payment`, { method: "POST", body: { utr } }),

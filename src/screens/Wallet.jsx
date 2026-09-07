@@ -14,21 +14,19 @@ export default function Wallet() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [upi, setUpi] = useState("");
-  const [threshold, setThreshold] = useState("");
 
   function load() {
     setError(null);
     api.wallet().then((r) => {
       setData(r);
       setUpi(r.wallet.payout_upi || "");
-      setThreshold(r.wallet.payout_threshold ?? "");
     }).catch(setError);
   }
   useEffect(load, []);
 
   async function saveDetails() {
     setBusy(true); setMsg(""); setError(null);
-    try { await api.savePayoutDetails({ payout_upi: upi.trim(), payout_threshold: Number(threshold) || 0 }); setMsg("Payout details saved."); load(); }
+    try { await api.savePayoutDetails({ payout_upi: upi.trim() }); setMsg("Payout details saved."); load(); }
     catch (e) { setError(e); } finally { setBusy(false); }
   }
   async function acceptTerms() {
@@ -70,10 +68,7 @@ export default function Wallet() {
 
       <Card style={{ marginBottom: 14 }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Payout details</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field label="Payout UPI ID"><input style={inputStyle} value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="you@okhdfcbank" /></Field>
-          <Field label="Minimum payout threshold (₹)"><input style={inputStyle} value={threshold} onChange={(e) => setThreshold(e.target.value)} inputMode="numeric" /></Field>
-        </div>
+        <Field label="Payout UPI ID"><input style={inputStyle} value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="you@okhdfcbank" /></Field>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
           <Btn onClick={saveDetails} disabled={busy}>Save details</Btn>
           {w.terms_accepted_at
