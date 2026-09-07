@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { C, PageHead, Card, Badge, Spinner, ErrorNote, Empty, Field, inputStyle, fmtDate } from "../ui.jsx";
+import OrderDetailView from "./OrderDetailView.jsx";
 
-const ORDER_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
+const ORDER_STATUSES = ["pending", "processing", "on-hold", "completed", "cancelled", "refunded"];
 const inr = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
 // All storefront orders for the logged-in vendor, across every shop, filterable
@@ -34,8 +35,15 @@ export default function MyOrders() {
       catch (e) { setError(e); }
     }
   }
+  async function reloadDetail(o) {
+    try { const r = await api.hostedSiteOrder(o.enrollment_id, o.id); setDetail((d) => ({ ...d, [o.id]: r })); } catch { /* ignore */ }
+  }
   async function changeStatus(o, s) {
-    try { await api.updateHostedSiteOrderStatus(o.enrollment_id, o.id, s); load(); }
+    try { await api.updateHostedSiteOrderStatus(o.enrollment_id, o.id, s); reloadDetail(o); load(); }
+    catch (e) { alert(e.message); }
+  }
+  async function verifyPayment(o, utr) {
+    try { await api.verifyOrderPayment(o.enrollment_id, o.id, utr || undefined); reloadDetail(o); load(); }
     catch (e) { alert(e.message); }
   }
 
@@ -83,29 +91,10 @@ export default function MyOrders() {
               {openId === o.id && (
                 <div style={{ padding: "0 15px 14px", borderTop: "1px solid #eef1f6" }}>
                   {!detail[o.id] ? <Spinner msg="Loading…" /> : (
-                    <>
-                      <div style={{ margin: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
-                        {detail[o.id].items.map((it) => (
-                          <div key={it.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#42505f", gap: 10 }}>
-                            <span>
-                              {it.page_url
-                                ? <a href={it.page_url} target="_blank" rel="noreferrer" style={{ color: "#3b6fd8", textDecoration: "none" }}>{it.product_name}</a>
-                                : it.product_name}
-                              {it.size ? ` (Size ${it.size})` : ""} × {it.qty}
-                            </span>
-                            <span>{inr(it.line_total)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 12 }}>
-                        📍 {[o.address?.line1, o.address?.city, o.address?.state, o.address?.pincode].filter(Boolean).join(", ")} · 📞 {o.buyer_phone}
-                      </div>
-                      <Field label="Status">
-                        <select style={{ ...inputStyle, maxWidth: 200 }} value={o.status} onChange={(e) => changeStatus(o, e.target.value)}>
-                          {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </Field>
-                    </>
+                    <div style={{ paddingTop: 12 }}>
+                      <OrderDetailView data={detail[o.id]} role="vendor"
+                        onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o, s)} />
+                    </div>
                   )}
                 </div>
               )}
