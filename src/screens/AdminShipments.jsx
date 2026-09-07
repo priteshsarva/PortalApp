@@ -14,12 +14,12 @@ export default function AdminShipments() {
     <div>
       <PageHead title="Shipments" sub="Approve parcel proof to release held funds. Photos auto-delete after 60 days." />
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-        {[["pending", "Pending shipment"], ["review", "Proof to review"], ["all", "All shipments"], ["purge", "Photo backup"]].map(([k, label]) => (
+        {[["orders", "Orders"], ["review", "Proof to review"], ["all", "All shipments"], ["purge", "Photo backup"]].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#C8FF3D" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
         ))}
       </div>
-      {tab === "purge" ? <PurgeBackup /> : tab === "pending" ? <Pending /> : <List status={tab === "review" ? "submitted" : ""} />}
+      {tab === "purge" ? <PurgeBackup /> : tab === "orders" ? <Orders /> : <List status={tab === "review" ? "submitted" : ""} />}
     </div>
   );
 }
@@ -90,54 +90,70 @@ function List({ status }) {
   );
 }
 
-// Orders that are paid but not yet shipped. Admin can open the order or mark it
-// shipped directly (releases held funds, completes the order).
-function Pending() {
+// All orders with their shipment status + a Mark-shipped control — the parallel
+// to payment verification. Filter: to ship / shipped / all.
+function Orders() {
   const [rows, setRows] = useState(null);
+  const [filter, setFilter] = useState("to_ship");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(null);
   const [openId, setOpenId] = useState(null);
   const [detail, setDetail] = useState({});
-  function load() { setRows(null); api.adminOrdersPendingShipment().then((r) => setRows(r.orders || [])).catch(setError); }
-  useEffect(load, []);
+  function load() { setRows(null); api.adminOrderShipments(filter).then((r) => setRows(r.orders || [])).catch(setError); }
+  useEffect(load, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
   async function toggle(o) {
     if (openId === o.id) { setOpenId(null); return; }
     setOpenId(o.id);
     if (!detail[o.id]) { try { const r = await api.adminOrder(o.id); setDetail((d) => ({ ...d, [o.id]: r })); } catch (e) { alert(e.message); } }
   }
+  async function reloadDetail(id) { try { const r = await api.adminOrder(id); setDetail((d) => ({ ...d, [id]: r })); } catch { /* ignore */ } }
   async function markShipped(o) {
     if (!confirm(`Mark ${o.order_no} shipped and release held funds to the seller(s)?`)) return;
     setBusy(o.id);
-    try { await api.adminMarkShipped(o.id); load(); setOpenId(null); } catch (e) { alert(e.message); } finally { setBusy(null); }
+    try { await api.adminMarkShipped(o.id); reloadDetail(o.id); load(); } catch (e) { alert(e.message); } finally { setBusy(null); }
   }
-  if (!rows) return <Card><Spinner /></Card>;
-  if (error) return <Card><ErrorNote error={error} /></Card>;
-  if (!rows.length) return <Card><Empty msg="No orders awaiting shipment." /></Card>;
+  const F = [["to_ship", "To ship"], ["shipped", "Shipped"], ["all", "All"]];
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {rows.map((o) => (
-        <Card key={o.id} style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 15px" }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.order_no} <span style={{ fontWeight: 500, color: "#9aa3b2" }}>· {o.buyer_name}</span></div>
-              <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>
-                <span style={{ color: "#3b6fd8", fontWeight: 600 }}>{o.store_name}</span> · ₹{Number(o.total).toLocaleString("en-IN")} · {fmtDate(o.created_at)}
-                {o.fulfilment_mode === "direct_to_customer" ? " · direct to customer" : ""}
-                {o.has_submitted ? " · proof submitted" : ""}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <Btn small tone="ghost" onClick={() => toggle(o)}>{openId === o.id ? "Hide" : "View order"}</Btn>
-              <Btn small tone="lime" disabled={busy === o.id} onClick={() => markShipped(o)}>Mark shipped</Btn>
-            </div>
-          </div>
-          {openId === o.id && (
-            <div style={{ padding: "0 15px 15px", borderTop: "1px solid #eef1f6" }}>
-              {!detail[o.id] ? <Spinner msg="Loading…" /> : <div style={{ paddingTop: 12 }}><OrderDetailView data={detail[o.id]} role="admin" onMarkShipped={() => markShipped(o)} /></div>}
-            </div>
-          )}
-        </Card>
-      ))}
+    <div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        {F.map(([k, label]) => (
+          <button key={k} onClick={() => setFilter(k)}
+            style={{ border: filter === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: filter === k ? "#16361b" : "#fff", color: filter === k ? "#C8FF3D" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>{label}</button>
+        ))}
+      </div>
+      <ErrorNote error={error} />
+      {!rows ? <Card><Spinner /></Card> : !rows.length ? <Card><Empty msg="No orders in this view." /></Card> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {rows.map((o) => {
+            const payBadge = o.payment_status === "verified" ? ["#e8f7ee", "#14663a", "Paid"] : o.payment_status === "claimed" ? ["#fff6e5", "#8a6100", "Payment claimed"] : ["#f1f3f7", "#6b7688", "Unpaid"];
+            const shipBadge = o.shipped ? ["#e8f7ee", "#14663a", "Shipped"] : ["#fff6e5", "#8a6100", "Not shipped"];
+            const chip = ([bg, fg, t]) => <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: bg, color: fg }}>{t}</span>;
+            return (
+              <Card key={o.id} style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 15px" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.order_no} <span style={{ fontWeight: 500, color: "#9aa3b2" }}>· {o.buyer_name}</span></div>
+                    <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>
+                      <span style={{ color: "#3b6fd8", fontWeight: 600 }}>{o.store_name}</span> · ₹{Number(o.total).toLocaleString("en-IN")} · {fmtDate(o.created_at)}
+                      {o.has_submitted && !o.shipped ? " · proof submitted" : ""}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    {chip(payBadge)}{chip(shipBadge)}
+                    <Btn small tone="ghost" onClick={() => toggle(o)}>{openId === o.id ? "Hide" : "View"}</Btn>
+                    {!o.shipped && o.payment_status === "verified" && <Btn small tone="lime" disabled={busy === o.id} onClick={() => markShipped(o)}>Mark shipped</Btn>}
+                  </div>
+                </div>
+                {openId === o.id && (
+                  <div style={{ padding: "0 15px 15px", borderTop: "1px solid #eef1f6" }}>
+                    {!detail[o.id] ? <Spinner msg="Loading…" /> : <div style={{ paddingTop: 12 }}><OrderDetailView data={detail[o.id]} role="admin" onMarkShipped={() => markShipped(o)} onVerify={async (utr) => { try { await api.adminVerifyOrderPayment(o.id, utr); reloadDetail(o.id); load(); } catch (e) { alert(e.message); } }} onStatus={async (s) => { try { await api.adminSetOrderStatus(o.id, s); reloadDetail(o.id); load(); } catch (e) { alert(e.message); } }} /></div>}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

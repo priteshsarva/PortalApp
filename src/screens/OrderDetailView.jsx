@@ -122,7 +122,7 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
               </div>
             );
           })()}
-          {shipments.length === 0 ? <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>No shipments submitted yet.</div> : shipments.map((s) => (
+          {shipments.length === 0 ? <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>{order.status === "completed" ? "Marked fulfilled — no parcel photos on file." : "No shipments submitted yet."}</div> : shipments.map((s) => (
             <div key={s.id} style={{ border: "1px solid #eef1f6", borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
                 <span style={{ fontWeight: 600 }}>{LEG_LABEL[s.leg] || s.leg}</span>
