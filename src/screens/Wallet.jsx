@@ -52,9 +52,11 @@ export default function Wallet() {
       <ErrorNote error={error} />
       {msg && <div style={{ background: "#eef7ee", border: "1px solid #cbe5cb", color: "#2c6e2c", padding: "9px 13px", borderRadius: 9, marginBottom: 14, fontSize: 13 }}>{msg}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-        <Card><div style={{ fontSize: 12, color: "#6b7688", fontWeight: 700 }}>AVAILABLE</div><div style={{ fontSize: 30, fontWeight: 800, color: "#14663a" }}>{money(w.available)}</div><div style={{ fontSize: 11.5, color: "#8a93a3" }}>Withdrawable now</div></Card>
-        <Card><div style={{ fontSize: 12, color: "#6b7688", fontWeight: 700 }}>ON HOLD</div><div style={{ fontSize: 30, fontWeight: 800, color: "#8a6100" }}>{money(w.held)}</div><div style={{ fontSize: 11.5, color: "#8a93a3" }}>Releases when shipments are confirmed</div></Card>
+      <div style={{ display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <Card style={{ flex: "1 1 150px" }}><div style={{ fontSize: 11.5, color: "#6b7688", fontWeight: 700 }}>AVAILABLE</div><div style={{ fontSize: 26, fontWeight: 800, color: "#14663a" }}>{money(w.available)}</div><div style={{ fontSize: 11, color: "#8a93a3" }}>Withdrawable now</div></Card>
+        <Card style={{ flex: "1 1 150px" }}><div style={{ fontSize: 11.5, color: "#6b7688", fontWeight: 700 }}>ON HOLD</div><div style={{ fontSize: 26, fontWeight: 800, color: "#8a6100" }}>{money(w.held)}</div><div style={{ fontSize: 11, color: "#8a93a3" }}>Releases on shipment</div></Card>
+        <Card style={{ flex: "1 1 150px" }}><div style={{ fontSize: 11.5, color: "#6b7688", fontWeight: 700 }}>IN PAYOUT</div><div style={{ fontSize: 26, fontWeight: 800, color: "#2b5bb5" }}>{money(data.totals?.in_payout)}</div><div style={{ fontSize: 11, color: "#8a93a3" }}>Requested / processing</div></Card>
+        <Card style={{ flex: "1 1 150px" }}><div style={{ fontSize: 11.5, color: "#6b7688", fontWeight: 700 }}>PAID OUT</div><div style={{ fontSize: 26, fontWeight: 800, color: "#1b2230" }}>{money(data.totals?.paid_out)}</div><div style={{ fontSize: 11, color: "#8a93a3" }}>Lifetime</div></Card>
       </div>
 
       {/* Payout terms gate */}
@@ -69,7 +71,8 @@ export default function Wallet() {
       <Card style={{ marginBottom: 14 }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Payout details</div>
         <Field label="Payout UPI ID"><input style={inputStyle} value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="you@okhdfcbank" /></Field>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+        <div style={{ fontSize: 12, color: "#6b7688", margin: "2px 0 8px" }}>Minimum payout: <strong>{money(w.payout_threshold)}</strong> (set by the platform).</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}>
           <Btn onClick={saveDetails} disabled={busy}>Save details</Btn>
           {w.terms_accepted_at
             ? <Btn tone="lime" onClick={requestPayout} disabled={busy || !canRequest}>Request payout of {money(w.available)}</Btn>
@@ -77,7 +80,10 @@ export default function Wallet() {
         </div>
         {pending && <div style={{ fontSize: 12.5, color: "#42505f", marginTop: 8 }}>Payout of <strong>{money(pending.amount)}</strong> is <Badge status={pending.status === "processing" ? "active" : "pending"} /> {pending.status}.</div>}
         {!pending && w.terms_accepted_at && Number(w.available) < Number(w.payout_threshold) && (
-          <div style={{ fontSize: 12, color: "#8a93a3", marginTop: 8 }}>You can request a payout once your available balance reaches {money(w.payout_threshold)}.</div>
+          <div style={{ fontSize: 12, color: "#8a93a3", marginTop: 8 }}>Available needs to reach {money(w.payout_threshold)} before you can withdraw — you have {money(w.available)}.</div>
+        )}
+        {!pending && w.terms_accepted_at && Number(w.available) >= Number(w.payout_threshold) && (
+          <div style={{ fontSize: 12, color: "#14663a", marginTop: 8 }}>✓ You can withdraw now.</div>
         )}
       </Card>
 
@@ -100,16 +106,24 @@ export default function Wallet() {
         <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>Your share per order — held until the shipment is confirmed, then released to your available balance.</div>
         {!data.by_order?.length ? <Empty msg="No order earnings yet." /> : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 460 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 620 }}>
               <thead><tr style={{ color: "#6b7688", textAlign: "left" }}>
-                <th style={{ padding: "6px 8px" }}>Order</th><th style={{ padding: "6px 8px", textAlign: "right" }}>Your share</th>
-                <th style={{ padding: "6px 8px", textAlign: "right" }}>Released</th><th style={{ padding: "6px 8px", textAlign: "right" }}>On hold</th>
+                <th style={{ padding: "6px 8px" }}>Order</th>
+                <th style={{ padding: "6px 8px", textAlign: "right" }}>Order total</th>
+                <th style={{ padding: "6px 8px", textAlign: "right" }}>Platform fee</th>
+                <th style={{ padding: "6px 8px", textAlign: "right" }}>Gateway fee</th>
+                <th style={{ padding: "6px 8px", textAlign: "right" }}>Your share</th>
+                <th style={{ padding: "6px 8px", textAlign: "right" }}>Released</th>
+                <th style={{ padding: "6px 8px", textAlign: "right" }}>On hold</th>
               </tr></thead>
               <tbody>
                 {data.by_order.map((g) => (
                   <tr key={g.order_no} style={{ borderTop: "1px solid #f2f4f8" }}>
                     <td style={{ padding: "7px 8px", fontWeight: 600 }}>{g.order_no} <span style={{ fontWeight: 400, color: "#9aa3b2" }}>· {g.order_status}</span></td>
-                    <td style={{ padding: "7px 8px", textAlign: "right" }}>{money(g.held)}</td>
+                    <td style={{ padding: "7px 8px", textAlign: "right", color: "#6b7688" }}>{money(g.order_total)}</td>
+                    <td style={{ padding: "7px 8px", textAlign: "right", color: "#b23a48" }}>− {money(g.platform_fee)}</td>
+                    <td style={{ padding: "7px 8px", textAlign: "right", color: "#b23a48" }}>− {money(g.gateway_fee)}</td>
+                    <td style={{ padding: "7px 8px", textAlign: "right", fontWeight: 600 }}>{money(g.held)}</td>
                     <td style={{ padding: "7px 8px", textAlign: "right", color: "#14663a" }}>{money(g.released)}</td>
                     <td style={{ padding: "7px 8px", textAlign: "right", color: g.outstanding > 0 ? "#8a6100" : "#9aa3b2" }}>{money(g.outstanding)}</td>
                   </tr>

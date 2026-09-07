@@ -70,6 +70,14 @@ function ClientModal({ u, onClose }) {
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null); // { temp_password? } or error string
+  const [threshold, setThreshold] = useState(u.payout_threshold ?? "");
+  const [thMsg, setThMsg] = useState("");
+
+  async function saveThreshold() {
+    setThMsg("saving…");
+    try { await api.adminSetWalletThreshold(u.id, Number(threshold) || 0); setThMsg("✓ saved"); setTimeout(() => setThMsg(""), 1500); }
+    catch (e) { setThMsg("Error: " + e.message); }
+  }
 
   async function reset(generate) {
     setBusy(true); setResult(null);
@@ -106,6 +114,14 @@ function ClientModal({ u, onClose }) {
           ))}
         </div>
       )}
+
+      <div style={{ fontWeight: 700, fontSize: 13, margin: "16px 0 8px" }}>Payout threshold</div>
+      <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 6 }}>Minimum wallet balance before this vendor can withdraw. Blank/0 uses the platform default.</div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input style={{ ...inputStyle, maxWidth: 160 }} inputMode="numeric" placeholder="platform default" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+        <Btn small tone="lime" onClick={saveThreshold}>Save threshold</Btn>
+        {thMsg && <span style={{ fontSize: 12, color: thMsg.startsWith("Error") ? "#b3261e" : "#2e7d32" }}>{thMsg}</span>}
+      </div>
 
       <div style={{ fontWeight: 700, fontSize: 13, margin: "16px 0 8px" }}>Reset password</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
