@@ -32,6 +32,7 @@ import Wholesale from "./screens/Wholesale.jsx";
 import AdminWholesalers from "./screens/AdminWholesalers.jsx";
 import Wallet from "./screens/Wallet.jsx";
 import AdminShipments from "./screens/AdminShipments.jsx";
+import AdminWallet from "./screens/AdminWallet.jsx";
 import WelcomeTour from "./Tour.jsx";
 
 // Wholesale-seller feature (vendors listing their own products) is parked for now
@@ -59,6 +60,7 @@ const adminNav = [
   ["hostedSites", "Online stores", LayoutTemplate],
   ["hostedOrders", "Store orders", ClipboardList],
   ["plans", "Plans", Receipt],
+  ["adminWallet", "Wallet", CreditCard],
   ["billingAdmin", "Billing", CreditCard],
   ...(WHOLESALE_ENABLED ? [["wholesalers", "Wholesale", Store]] : []),
   ["shipments", "Shipments", ClipboardList],
@@ -146,6 +148,7 @@ export default function App() {
       case "hostedSites": return <AdminHostedSites />;
       case "hostedOrders": return <AdminOrders />;
       case "plans": return <AdminPlans />;
+      case "adminWallet": return <AdminWallet />;
       case "billingAdmin": return <AdminBilling />;
       case "wholesalers": return WHOLESALE_ENABLED ? <AdminWholesalers /> : <ComingSoon title="Wholesale" note="Supplier onboarding is coming soon." />;
       case "shipments": return <AdminShipments />;

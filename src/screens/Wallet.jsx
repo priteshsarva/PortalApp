@@ -95,6 +95,31 @@ export default function Wallet() {
         )}
       </Card>
 
+      <Card style={{ marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Earnings by order</div>
+        <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>Your share per order — held until the shipment is confirmed, then released to your available balance.</div>
+        {!data.by_order?.length ? <Empty msg="No order earnings yet." /> : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 460 }}>
+              <thead><tr style={{ color: "#6b7688", textAlign: "left" }}>
+                <th style={{ padding: "6px 8px" }}>Order</th><th style={{ padding: "6px 8px", textAlign: "right" }}>Your share</th>
+                <th style={{ padding: "6px 8px", textAlign: "right" }}>Released</th><th style={{ padding: "6px 8px", textAlign: "right" }}>On hold</th>
+              </tr></thead>
+              <tbody>
+                {data.by_order.map((g) => (
+                  <tr key={g.order_no} style={{ borderTop: "1px solid #f2f4f8" }}>
+                    <td style={{ padding: "7px 8px", fontWeight: 600 }}>{g.order_no} <span style={{ fontWeight: 400, color: "#9aa3b2" }}>· {g.order_status}</span></td>
+                    <td style={{ padding: "7px 8px", textAlign: "right" }}>{money(g.held)}</td>
+                    <td style={{ padding: "7px 8px", textAlign: "right", color: "#14663a" }}>{money(g.released)}</td>
+                    <td style={{ padding: "7px 8px", textAlign: "right", color: g.outstanding > 0 ? "#8a6100" : "#9aa3b2" }}>{money(g.outstanding)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
       <Card>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Ledger</div>
         {!data.ledger?.length ? <Empty msg="No transactions yet." /> : (

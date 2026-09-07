@@ -4,8 +4,9 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { PageHead, Card, Btn, Badge, Spinner, ErrorNote, Empty, fmtDate } from "../ui.jsx";
+import OrderDetailView from "./OrderDetailView.jsx";
 
-const LEG = { wholesaler_to_retailer: "Wholesaler → Retailer", retailer_to_customer: "Retailer → Customer" };
+const LEG = { wholesaler_to_retailer: "Wholesaler → Retailer", retailer_to_customer: "Retailer → Customer", wholesaler_to_customer: "Wholesaler → Customer" };
 
 export default function AdminShipments() {
   const [tab, setTab] = useState("review");
@@ -27,8 +28,15 @@ function List({ status }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(null);
+  const [openId, setOpenId] = useState(null);
+  const [detail, setDetail] = useState({});
   function load() { setRows(null); api.adminShipments(status || undefined).then((r) => setRows(r.shipments || [])).catch(setError); }
   useEffect(load, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function toggleOrder(s) {
+    if (openId === s.id) { setOpenId(null); return; }
+    setOpenId(s.id);
+    if (!detail[s.id]) { try { const r = await api.adminOrder(s.order_id); setDetail((d) => ({ ...d, [s.id]: r })); } catch (e) { alert(e.message); } }
+  }
   async function act(s, next) {
     let note;
     if (next === "rejected") { note = window.prompt("Reason for rejection:", "") ?? ""; }
@@ -61,13 +69,21 @@ function List({ status }) {
             ))}
             {!(s.photos || []).length && <span style={{ fontSize: 12, color: "#9aa3b2" }}>Photos purged</span>}
           </div>
-          {s.status === "submitted" && (
-            <div style={{ display: "flex", gap: 8 }}>
-              <Btn small tone="lime" disabled={busy === s.id} onClick={() => act(s, "approved")}>Approve &amp; release funds</Btn>
-              <Btn small tone="ghost" disabled={busy === s.id} onClick={() => act(s, "rejected")}>Reject</Btn>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {s.status === "submitted" && (
+              <>
+                <Btn small tone="lime" disabled={busy === s.id} onClick={() => act(s, "approved")}>Approve &amp; release funds</Btn>
+                <Btn small tone="ghost" disabled={busy === s.id} onClick={() => act(s, "rejected")}>Reject</Btn>
+              </>
+            )}
+            <Btn small tone="ghost" onClick={() => toggleOrder(s)}>{openId === s.id ? "Hide order" : "View order"}</Btn>
+          </div>
+          {s.note && <div style={{ fontSize: 12, color: "#8a6100", marginTop: 6 }}>Note: {s.note}</div>}
+          {openId === s.id && (
+            <div style={{ marginTop: 12, borderTop: "1px solid #eef1f6", paddingTop: 12 }}>
+              {!detail[s.id] ? <Spinner msg="Loading…" /> : <OrderDetailView data={detail[s.id]} role="admin" />}
             </div>
           )}
-          {s.note && <div style={{ fontSize: 12, color: "#8a6100", marginTop: 6 }}>Note: {s.note}</div>}
         </Card>
       ))}
     </div>
