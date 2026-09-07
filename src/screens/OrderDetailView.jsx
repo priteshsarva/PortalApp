@@ -140,13 +140,17 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
             {order.payment_utr ? <>UTR: <strong>{order.payment_utr}</strong><br /></> : null}
             Status: {order.payment_status}
           </div>
-          {order.payment_status !== "verified" && onVerify && (
+          {/* Platform-held payments are verified by the ADMIN (checks the platform
+              bank statement); the vendor verifies only their own direct payments. */}
+          {order.payment_status !== "verified" && onVerify && (isAdmin || order.payout_mode === "direct") ? (
             <Btn tone="lime" small style={{ marginTop: 8 }} disabled={busy}
               onClick={() => { const utr = window.prompt("Confirm payment received.\nUTR / reference (optional):", order.payment_utr || "") ?? undefined; if (utr !== undefined) onVerify(utr || undefined); }}>
               Verify payment
             </Btn>
-          )}
-          {order.payment_status === "claimed" && <div style={{ fontSize: 11.5, color: "#8a6100", marginTop: 6 }}>Buyer says they've paid — check your statement, then verify.</div>}
+          ) : order.payment_status !== "verified" && !isAdmin && order.payout_mode === "platform" ? (
+            <div style={{ fontSize: 11.5, color: "#8a6100", marginTop: 8 }}>Payment is collected by the platform — the admin verifies it, then your share is credited.</div>
+          ) : null}
+          {order.payment_status === "claimed" && <div style={{ fontSize: 11.5, color: "#8a6100", marginTop: 6 }}>Buyer says they've paid — check the statement, then verify.</div>}
         </div>
 
         <div style={box}>
