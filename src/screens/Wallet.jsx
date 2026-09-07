@@ -44,7 +44,10 @@ export default function Wallet() {
 
   const w = data.wallet;
   const pending = data.pending?.[0];
-  const canRequest = !pending && Number(w.available) >= Number(w.payout_threshold) && w.terms_accepted_at && (w.payout_upi || upi);
+  // Terms only need accepting if the platform actually configured some.
+  const termsRequired = !!(data.terms_text && data.terms_text.trim());
+  const termsOk = !termsRequired || !!w.terms_accepted_at;
+  const canRequest = !pending && Number(w.available) >= Number(w.payout_threshold) && termsOk && (w.payout_upi || upi);
 
   return (
     <div>
@@ -74,13 +77,16 @@ export default function Wallet() {
         <div style={{ fontSize: 12, color: "#6b7688", margin: "2px 0 8px" }}>Minimum payout: <strong>{money(w.payout_threshold)}</strong> (set by the platform).</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}>
           <Btn onClick={saveDetails} disabled={busy}>Save details</Btn>
-          {w.terms_accepted_at
-            ? <Btn tone="lime" onClick={requestPayout} disabled={busy || !canRequest}>Request payout of {money(w.available)}</Btn>
-            : <span style={{ fontSize: 12, color: "#8a6100" }}>Accept the payout terms above to withdraw.</span>}
+          {termsRequired && !w.terms_accepted_at
+            ? <span style={{ fontSize: 12, color: "#8a6100" }}>Accept the payout terms above to withdraw.</span>
+            : <Btn tone="lime" onClick={requestPayout} disabled={busy || !canRequest}>Request payout of {money(w.available)}</Btn>}
         </div>
         {pending && <div style={{ fontSize: 12.5, color: "#42505f", marginTop: 8 }}>Payout of <strong>{money(pending.amount)}</strong> is <Badge status={pending.status === "processing" ? "active" : "pending"} /> {pending.status}.</div>}
-        {!pending && w.terms_accepted_at && Number(w.available) < Number(w.payout_threshold) && (
+        {!pending && termsOk && Number(w.available) < Number(w.payout_threshold) && (
           <div style={{ fontSize: 12, color: "#8a93a3", marginTop: 8 }}>Available needs to reach {money(w.payout_threshold)} before you can withdraw — you have {money(w.available)}.</div>
+        )}
+        {!pending && termsOk && !(w.payout_upi || upi) && (
+          <div style={{ fontSize: 12, color: "#8a6100", marginTop: 8 }}>Add your payout UPI ID and Save details to enable withdrawals.</div>
         )}
         {!pending && w.terms_accepted_at && Number(w.available) >= Number(w.payout_threshold) && (
           <div style={{ fontSize: 12, color: "#14663a", marginTop: 8 }}>✓ You can withdraw now.</div>
