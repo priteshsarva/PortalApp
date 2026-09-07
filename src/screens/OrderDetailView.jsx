@@ -12,7 +12,7 @@ const money = (n) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFra
 const LEG_LABEL = { wholesaler_to_retailer: "Wholesaler → retailer", retailer_to_customer: "Retailer → customer", wholesaler_to_customer: "Wholesaler → customer" };
 const ORDER_STATUSES = ["pending", "processing", "on-hold", "completed", "cancelled", "refunded"];
 
-export default function OrderDetailView({ data, role = "vendor", onVerify, onStatus, busy }) {
+export default function OrderDetailView({ data, role = "vendor", onVerify, onStatus, onShip, onMarkShipped, busy }) {
   const { order, items = [], shipments = [] } = data || {};
   const [status, setStatus] = useState(order?.status || "pending");
   if (!order) return null;
@@ -92,6 +92,30 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
           <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 8 }}>
             Route: {order.fulfilment_mode === "direct_to_customer" ? "wholesaler ships direct to customer" : "wholesaler → retailer → customer"}
           </div>
+          {/* Ship actions. Vendor uploads proof; admin can mark shipped directly. */}
+          {(() => {
+            const verified = order.payment_status === "verified";
+            const custLeg = order.fulfilment_mode === "direct_to_customer" ? "wholesaler_to_customer" : "retailer_to_customer";
+            const custShip = shipments.find((s) => s.leg === custLeg);
+            const done = order.status === "completed" || (custShip && custShip.status === "approved");
+            if (!verified) return <div style={{ fontSize: 12, color: "#8a6100", marginBottom: 10 }}>Awaiting payment verification before shipping.</div>;
+            if (done) return null;
+            return (
+              <div style={{ marginBottom: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {role === "vendor" && onShip && order.fulfilment_mode !== "direct_to_customer" && (
+                  custShip && custShip.status === "submitted"
+                    ? <span style={{ fontSize: 12, color: "#8a6100" }}>Proof submitted — awaiting admin approval.</span>
+                    : <Btn small tone="lime" disabled={busy} onClick={() => onShip("retailer_to_customer")}>📦 Mark shipped — upload proof</Btn>
+                )}
+                {role === "vendor" && order.fulfilment_mode === "direct_to_customer" && (
+                  <span style={{ fontSize: 12, color: "#2b5bb5" }}>The wholesaler ships this order directly.</span>
+                )}
+                {role === "admin" && onMarkShipped && (
+                  <Btn small disabled={busy} onClick={() => { if (confirm("Mark this order shipped and release all held funds to the seller(s)?")) onMarkShipped(); }}>Mark shipped (no proof)</Btn>
+                )}
+              </div>
+            );
+          })()}
           {shipments.length === 0 ? <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>No shipments submitted yet.</div> : shipments.map((s) => (
             <div key={s.id} style={{ border: "1px solid #eef1f6", borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { C, PageHead, Card, Badge, Spinner, ErrorNote, Empty, Field, inputStyle, fmtDate } from "../ui.jsx";
 import OrderDetailView from "./OrderDetailView.jsx";
+import ShipmentModal from "../components/ShipmentModal.jsx";
 
 const ORDER_STATUSES = ["pending", "processing", "on-hold", "completed", "cancelled", "refunded"];
 const inr = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
@@ -16,6 +17,7 @@ export default function MyOrders() {
   const [status, setStatus] = useState("");
   const [openId, setOpenId] = useState(null);
   const [detail, setDetail] = useState({}); // orderId -> { order, items }
+  const [ship, setShip] = useState(null);   // order for the shipment-proof modal
 
   useEffect(() => { api.myHostedSites().then((r) => setSites(r.sites || [])).catch(() => {}); }, []);
 
@@ -93,7 +95,8 @@ export default function MyOrders() {
                   {!detail[o.id] ? <Spinner msg="Loading…" /> : (
                     <div style={{ paddingTop: 12 }}>
                       <OrderDetailView data={detail[o.id]} role="vendor"
-                        onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o, s)} />
+                        onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o, s)}
+                        onShip={() => setShip(o)} />
                     </div>
                   )}
                 </div>
@@ -102,6 +105,7 @@ export default function MyOrders() {
           ))}
         </div>
       )}
+      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg="retailer_to_customer" onClose={() => setShip(null)} onDone={() => { const o = ship; setShip(null); reloadDetail(o); load(); }} />}
     </div>
   );
 }

@@ -13,13 +13,13 @@ export default function AdminShipments() {
   return (
     <div>
       <PageHead title="Shipments" sub="Approve parcel proof to release held funds. Photos auto-delete after 60 days." />
-      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-        {[["review", "To review"], ["all", "All"], ["purge", "Photo backup"]].map(([k, label]) => (
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+        {[["pending", "Pending shipment"], ["review", "Proof to review"], ["all", "All shipments"], ["purge", "Photo backup"]].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#C8FF3D" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
         ))}
       </div>
-      {tab === "purge" ? <PurgeBackup /> : <List status={tab === "review" ? "submitted" : ""} />}
+      {tab === "purge" ? <PurgeBackup /> : tab === "pending" ? <Pending /> : <List status={tab === "review" ? "submitted" : ""} />}
     </div>
   );
 }
@@ -82,6 +82,58 @@ function List({ status }) {
           {openId === s.id && (
             <div style={{ marginTop: 12, borderTop: "1px solid #eef1f6", paddingTop: 12 }}>
               {!detail[s.id] ? <Spinner msg="Loading…" /> : <OrderDetailView data={detail[s.id]} role="admin" />}
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// Orders that are paid but not yet shipped. Admin can open the order or mark it
+// shipped directly (releases held funds, completes the order).
+function Pending() {
+  const [rows, setRows] = useState(null);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const [openId, setOpenId] = useState(null);
+  const [detail, setDetail] = useState({});
+  function load() { setRows(null); api.adminOrdersPendingShipment().then((r) => setRows(r.orders || [])).catch(setError); }
+  useEffect(load, []);
+  async function toggle(o) {
+    if (openId === o.id) { setOpenId(null); return; }
+    setOpenId(o.id);
+    if (!detail[o.id]) { try { const r = await api.adminOrder(o.id); setDetail((d) => ({ ...d, [o.id]: r })); } catch (e) { alert(e.message); } }
+  }
+  async function markShipped(o) {
+    if (!confirm(`Mark ${o.order_no} shipped and release held funds to the seller(s)?`)) return;
+    setBusy(o.id);
+    try { await api.adminMarkShipped(o.id); load(); setOpenId(null); } catch (e) { alert(e.message); } finally { setBusy(null); }
+  }
+  if (!rows) return <Card><Spinner /></Card>;
+  if (error) return <Card><ErrorNote error={error} /></Card>;
+  if (!rows.length) return <Card><Empty msg="No orders awaiting shipment." /></Card>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {rows.map((o) => (
+        <Card key={o.id} style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 15px" }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.order_no} <span style={{ fontWeight: 500, color: "#9aa3b2" }}>· {o.buyer_name}</span></div>
+              <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>
+                <span style={{ color: "#3b6fd8", fontWeight: 600 }}>{o.store_name}</span> · ₹{Number(o.total).toLocaleString("en-IN")} · {fmtDate(o.created_at)}
+                {o.fulfilment_mode === "direct_to_customer" ? " · direct to customer" : ""}
+                {o.has_submitted ? " · proof submitted" : ""}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <Btn small tone="ghost" onClick={() => toggle(o)}>{openId === o.id ? "Hide" : "View order"}</Btn>
+              <Btn small tone="lime" disabled={busy === o.id} onClick={() => markShipped(o)}>Mark shipped</Btn>
+            </div>
+          </div>
+          {openId === o.id && (
+            <div style={{ padding: "0 15px 15px", borderTop: "1px solid #eef1f6" }}>
+              {!detail[o.id] ? <Spinner msg="Loading…" /> : <div style={{ paddingTop: 12 }}><OrderDetailView data={detail[o.id]} role="admin" onMarkShipped={() => markShipped(o)} /></div>}
             </div>
           )}
         </Card>

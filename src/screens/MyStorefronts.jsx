@@ -1564,16 +1564,17 @@ function OrdersPanel({ siteId }) {
                   {!detail[o.id] ? <Spinner msg="Loading…" /> : (
                     <div style={{ paddingTop: 12 }}>
                       <OrderDetailView data={detail[o.id]} role="vendor"
-                        onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o.id, s)} />
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 12, fontSize: 12, color: "#6b7688" }}>
-                        <span>Fulfilment:</span>
-                        <select style={{ ...inputStyle, maxWidth: 240, padding: "5px 8px" }} value={o.fulfilment_mode || "via_retailer"} onChange={(e) => changeFulfilment(o, e.target.value)}>
-                          <option value="via_retailer">Wholesaler → me → customer</option>
-                          <option value="direct_to_customer">Wholesaler ships direct to customer</option>
-                        </select>
-                        {o.payment_status === "verified" && o.fulfilment_mode !== "direct_to_customer" && <Btn small tone="lime" onClick={() => setShip(o)}>Ship to customer</Btn>}
-                        {o.fulfilment_mode === "direct_to_customer" && <span style={{ fontSize: 11.5, color: "#2b5bb5" }}>Wholesaler ships direct to the customer</span>}
-                      </div>
+                        onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o.id, s)}
+                        onShip={() => setShip(o)} />
+                      {o.payment_status !== "verified" && (
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 12, fontSize: 12, color: "#6b7688" }}>
+                          <span>Fulfilment:</span>
+                          <select style={{ ...inputStyle, maxWidth: 240, padding: "5px 8px" }} value={o.fulfilment_mode || "via_retailer"} onChange={(e) => changeFulfilment(o, e.target.value)}>
+                            <option value="via_retailer">Wholesaler → me → customer</option>
+                            <option value="direct_to_customer">Wholesaler ships direct to customer</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1582,7 +1583,7 @@ function OrdersPanel({ siteId }) {
           ))}
         </div>
       )}
-      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg="retailer_to_customer" onClose={() => setShip(null)} onDone={() => { setShip(null); load(); }} />}
+      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg="retailer_to_customer" onClose={() => setShip(null)} onDone={() => { const id = ship.id; setShip(null); reloadDetail(id); load(); }} />}
     </Card>
   );
 }

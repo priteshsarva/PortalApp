@@ -35,6 +35,10 @@ export default function AdminWallet() {
     try { await api.adminSetOrderStatus(id, s); const r = await api.adminOrder(id); setDetail((d) => ({ ...d, [id]: r })); load(); }
     catch (e) { alert(e.message); }
   }
+  async function markShipped(id) {
+    try { await api.adminMarkShipped(id); const r = await api.adminOrder(id); setDetail((d) => ({ ...d, [id]: r })); load(); }
+    catch (e) { alert(e.message); }
+  }
 
   const kpi = (label, val, sub, color) => (
     <Card style={{ flex: "1 1 160px", minWidth: 150 }}>
@@ -81,7 +85,7 @@ export default function AdminWallet() {
                 {openId === o.id && (
                   <div style={{ padding: "0 16px 16px" }}>
                     {!detail[o.id] ? <Spinner msg="Loading…" /> : (
-                      <OrderDetailView data={detail[o.id]} role="admin" onVerify={(utr) => verify(o.id, utr)} onStatus={(s) => setStatus(o.id, s)} />
+                      <OrderDetailView data={detail[o.id]} role="admin" onVerify={(utr) => verify(o.id, utr)} onStatus={(s) => setStatus(o.id, s)} onMarkShipped={() => markShipped(o.id)} />
                     )}
                   </div>
                 )}

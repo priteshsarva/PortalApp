@@ -37,6 +37,9 @@ export default function AdminOrders() {
   async function adminStatus(id, status) {
     try { await api.adminSetOrderStatus(id, status); reloadDetail(id); load(); } catch (e) { alert(e.message); }
   }
+  async function adminMarkShipped(id) {
+    try { await api.adminMarkShipped(id); reloadDetail(id); load(); } catch (e) { alert(e.message); }
+  }
 
   return (
     <div>
@@ -72,7 +75,8 @@ export default function AdminOrders() {
                   {!detail[o.id] ? <Spinner msg="Loading…" /> : (
                     <div style={{ paddingTop: 12 }}>
                       <OrderDetailView data={detail[o.id]} role="admin"
-                        onVerify={(utr) => adminVerify(o.id, utr)} onStatus={(s) => adminStatus(o.id, s)} />
+                        onVerify={(utr) => adminVerify(o.id, utr)} onStatus={(s) => adminStatus(o.id, s)}
+                        onMarkShipped={() => adminMarkShipped(o.id)} />
                     </div>
                   )}
                 </div>
