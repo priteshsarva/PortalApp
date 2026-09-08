@@ -146,7 +146,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{inr(p.original_price)}</div>
                       {p.sizes.length > 0 && <div style={{ fontSize: 10.5, color: "#6b7688" }}>Sizes: {p.sizes.slice(0, 8).join(", ")}</div>}
                       <span style={{ marginTop: "auto", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, color: "#3b6fd8", paddingTop: 6 }}>
-                        {p.source_name} <ExternalLink size={12} />
+                        View product <ExternalLink size={12} />
                       </span>
                     </div>
                   </div>
