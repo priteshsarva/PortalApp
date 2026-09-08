@@ -241,8 +241,13 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
       {step === "mobile" && (
         <>
           <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Sign up with your mobile number — no password needed. It takes a few seconds.</p>
-          <input style={input} placeholder="Mobile number" value={mobile} onChange={(e) => setMobile(e.target.value)} inputMode="numeric" />
-          <button onClick={send} disabled={busy || mobile.replace(/\D/g, "").length < 10} style={btnPrimary}>{busy ? "Sending…" : "Send OTP"}</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ ...input, width: "auto", flex: "0 0 auto", background: "#f4f5f8", color: "#6b7688" }}>+91</span>
+            <input style={input} placeholder="10-digit mobile number" value={mobile}
+              onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              inputMode="numeric" maxLength={10} />
+          </div>
+          <button onClick={send} disabled={busy || mobile.length !== 10} style={btnPrimary}>{busy ? "Sending…" : "Send OTP"}</button>
           <div style={{ textAlign: "center", marginTop: 12, fontSize: 12.5, color: "#6b7688" }}>
             Already have an account? <button onClick={onSignIn} style={{ background: "none", border: "none", color: "#3b6fd8", cursor: "pointer", fontSize: 12.5, padding: 0 }}>Sign in</button>
           </div>
@@ -250,7 +255,7 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
       )}
       {step === "code" && (
         <>
-          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Enter the 6-digit code we sent to {mobile}.</p>
+          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Enter the 6-digit code we sent to +91 {mobile}.</p>
           <input style={input} placeholder="6-digit code" value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} />
           {devCode && <div style={{ fontSize: 12, color: "#8a6100", marginTop: 6 }}>Dev code: <strong>{devCode}</strong></div>}
           <button onClick={verify} disabled={busy || code.length < 4} style={btnPrimary}>{busy ? "Verifying…" : "Verify & continue"}</button>
