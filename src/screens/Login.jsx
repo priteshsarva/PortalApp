@@ -3,7 +3,7 @@ import { KeyRound } from "lucide-react";
 import { api, setToken } from "../api.js";
 import { C, Field, inputStyle, Btn, ErrorNote } from "../ui.jsx";
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onBack }) {
   const [mode, setMode] = useState("login"); // login | signup
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,6 +54,12 @@ export default function Login({ onLogin }) {
   return (
     <div style={{ minHeight: "100vh", background: C.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
       <div style={{ background: "#fff", borderRadius: 18, padding: 30, width: "100%", maxWidth: isSignup ? 440 : 380, maxHeight: "92vh", overflowY: "auto" }}>
+        {onBack && (
+          <button type="button" onClick={onBack}
+            style={{ background: "none", border: "none", color: "#6b7688", fontSize: 12.5, cursor: "pointer", padding: 0, marginBottom: 14 }}>
+            ← Back to product search
+          </button>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
           <div style={{ width: 30, height: 30, borderRadius: 8, background: C.lime, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <KeyRound size={17} color={C.ink} />

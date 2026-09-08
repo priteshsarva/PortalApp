@@ -16,12 +16,12 @@ export default function AdminBilling() {
     <div>
       <PageHead title="Billing" sub="Confirm invoice payments and process vendor payouts." />
       <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-        {[["invoices", "Invoices"], ["payouts", "Payouts"]].map(([k, label]) => (
+        {[["invoices", "Invoices"], ["payouts", "Payouts"], ["searchplans", "Search plans"]].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#C8FF3D" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
         ))}
       </div>
-      {tab === "invoices" ? <Invoices /> : <Payouts />}
+      {tab === "invoices" ? <Invoices /> : tab === "payouts" ? <Payouts /> : <SearchPlans />}
     </div>
   );
 }
@@ -147,6 +147,57 @@ function Invoices() {
             </tbody>
           </table>
         </Card>
+      )}
+    </div>
+  );
+}
+
+// ₹100/month search-only plan payments — confirm the UPI payment to grant the
+// user 30 days of unlimited catalogue search.
+function SearchPlans() {
+  const [rows, setRows] = useState(null);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const P = [["", "Awaiting"], ["paid", "Paid"], ["cancelled", "Cancelled"]];
+  function load() { setRows(null); api.adminSearchPlans(status || undefined).then((r) => setRows(r.orders || [])).catch(setError); }
+  useEffect(load, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function confirm(o) {
+    const utr = window.prompt(`Confirm ₹${o.amount} search plan for ${o.mobile || o.email}.\nUTR / reference (optional):`, o.utr || "");
+    if (utr === null) return;
+    setBusy(o.id);
+    try { await api.adminMarkSearchPlanPaid(o.id, utr.trim() || undefined); load(); }
+    catch (e) { alert(e.message); } finally { setBusy(null); }
+  }
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        {P.map(([s, label]) => (
+          <button key={s || "await"} onClick={() => setStatus(s)}
+            style={{ border: status === s ? "1px solid #16361b" : "1px solid #d4d9e3", background: status === s ? "#16361b" : "#fff", color: status === s ? "#C8FF3D" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>{label}</button>
+        ))}
+      </div>
+      <ErrorNote error={error} />
+      {!rows ? <Spinner /> : rows.length === 0 ? <Card><Empty msg="No search-plan payments in this view." /></Card> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {rows.map((o) => (
+            <Card key={o.id}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 700 }}>{rupees(o.amount)} <span style={{ fontWeight: 500, color: "#9aa3b2" }}>· {o.mobile || o.email || o.name}</span></div>
+                  <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>
+                    {fmtDate(o.created_at)}{o.utr ? ` · UTR ${o.utr}` : ""}
+                    {o.search_plan_until ? ` · plan until ${fmtDate(o.search_plan_until)}` : ""}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <Badge status={o.status === "paid" ? "active" : o.status === "cancelled" ? "rejected" : "pending"} />
+                  {o.status !== "paid" && <Btn small tone="lime" onClick={() => confirm(o)} disabled={busy === o.id}>{busy === o.id ? "Confirming…" : "Confirm payment"}</Btn>}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );

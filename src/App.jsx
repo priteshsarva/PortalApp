@@ -21,6 +21,7 @@ import AdminPaymentSettings from "./screens/AdminPaymentSettings.jsx";
 import MyStorefronts from "./screens/MyStorefronts.jsx";
 import MyOrders from "./screens/MyOrders.jsx";
 import CatalogueSearch from "./screens/CatalogueSearch.jsx";
+import SearchLanding from "./screens/SearchLanding.jsx";
 import Notifications, { lastSeen } from "./screens/Notifications.jsx";
 import BrandMapping from "./screens/BrandMapping.jsx";
 import AdminHostedSites from "./screens/AdminHostedSites.jsx";
@@ -91,6 +92,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
   const [nav, setNav] = useState("dashboard");
+  const [showLogin, setShowLogin] = useState(false);
   const [unread, setUnread] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const mobile = useIsMobile();
@@ -115,7 +117,13 @@ export default function App() {
   }, []);
 
   if (booting) return <div style={{ minHeight: "100vh", background: C.ink }} />;
-  if (!user) return <Login onLogin={(u) => { setUser(u); setNav(u.role === "admin" ? "queue" : "dashboard"); }} />;
+  // Logged-out entry point is the public catalogue search; "Sign in" swaps to Login.
+  if (!user) {
+    const onAuthed = (u) => { setUser(u); setShowLogin(false); setNav(u.role === "admin" ? "queue" : "dashboard"); };
+    return showLogin
+      ? <Login onLogin={onAuthed} onBack={() => setShowLogin(false)} />
+      : <SearchLanding onSignedIn={onAuthed} onSignIn={() => setShowLogin(true)} />;
+  }
 
   const role = user.role === "admin" ? "admin" : "client";
   const items = role === "admin" ? adminNav : clientNav;

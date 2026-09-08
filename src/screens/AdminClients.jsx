@@ -45,7 +45,10 @@ export default function AdminClients() {
                     <div style={{ fontWeight: 600 }}>{u.name || "—"}</div>
                     <div style={{ fontSize: 11.5, color: "#9aa3b2" }}>{u.email}</div>
                   </td>
-                  <td style={td}>{u.mobile || "—"}</td>
+                  <td style={td}>
+                    <div>{u.mobile || "—"}{u.mobile_verified && <span title="Mobile OTP verified" style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: "#14663a", background: "#e7f6ec", borderRadius: 999, padding: "1px 7px" }}>✓ verified</span>}</div>
+                    {u.profile_complete === false && <div style={{ fontSize: 10.5, color: "#8a6100", marginTop: 2 }}>Signup incomplete</div>}
+                  </td>
                   <td style={td}>{u.active_shops}/{u.shops}</td>
                   <td style={{ ...td, fontWeight: 600 }}>{Number(u.paid_total || 0).toLocaleString("en-IN")}</td>
                   <td style={td}>{Number(u.unpaid_invoices) > 0 ? <span style={{ color: "#b26a00", fontWeight: 600 }}>{u.unpaid_invoices}</span> : "0"}</td>
@@ -95,6 +98,8 @@ function ClientModal({ u, onClose }) {
     <Modal title={u.name || u.email} onClose={onClose}>
       <Row label="Email" value={u.email} />
       <Row label="Mobile" value={u.mobile} />
+      <Row label="Mobile verified" value={u.mobile_verified ? "Yes — OTP" : "No"} />
+      <Row label="Account created" value={u.profile_complete === false ? "Incomplete — mobile only" : "Complete"} />
       <Row label="WhatsApp number" value={u.whatsapp_number} />
       <Row label="WhatsApp community" value={u.whatsapp_community_url} link />
       {socialRows.map(([k, v]) => <Row key={k} label={k[0].toUpperCase() + k.slice(1)} value={v} link />)}

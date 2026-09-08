@@ -5,8 +5,18 @@ const tokenKey = "spp_portal_token";
 export const getToken = () => localStorage.getItem(tokenKey) || "";
 export const setToken = (t) => (t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey));
 
+// Stable per-browser id so the public search landing can count anonymous free
+// searches server-side (soft gate — clearing storage resets it).
+export function deviceId() {
+  try {
+    let d = localStorage.getItem("spp_device_id");
+    if (!d) { d = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()); localStorage.setItem("spp_device_id", d); }
+    return d;
+  } catch { return "nodevice"; }
+}
+
 async function req(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", "x-device-id": deviceId() };
   if (auth && getToken()) headers.Authorization = `Bearer ${getToken()}`;
 
   const res = await fetch(BASE + path, {
@@ -22,6 +32,7 @@ async function req(path, { method = "GET", body, auth = true } = {}) {
     const msg = (data && (data.error || data.message)) || `HTTP ${res.status}`;
     const err = new Error(msg);
     err.status = res.status;
+    err.data = data;   // carries { need, quota } for the search paywall
     throw err;
   }
   return data;
@@ -38,6 +49,20 @@ export const api = {
   adminCreatePlan: (body) => req("/portal/admin/plans", { method: "POST", body }),
   adminUpdatePlan: (id, body) => req(`/portal/admin/plans/${id}`, { method: "PATCH", body }),
   me: () => req("/auth/me"),
+
+  // ---- public catalogue-search landing (anon 3 free -> OTP 50 free -> ₹100/mo) ----
+  searchCatalogue: (params) => req(`/search/catalogue${params ? `?${new URLSearchParams(params)}` : ""}`, { auth: true }),
+  searchSources: () => req("/search/sources", { auth: true }),
+  searchQuota: () => req("/search/quota", { auth: true }),
+  searchConsume: (key) => req("/search/consume", { method: "POST", auth: true, body: { key } }),
+  otpSend: (mobile) => req("/search-auth/otp/send", { method: "POST", auth: false, body: { mobile } }),
+  otpVerify: (mobile, code) => req("/search-auth/otp/verify", { method: "POST", auth: false, body: { mobile, code } }),
+  firebaseAuth: (idToken) => req("/search-auth/firebase", { method: "POST", auth: false, body: { idToken } }),
+  completeProfile: (body) => req("/search-auth/complete-profile", { method: "POST", body }),
+  searchPlanOrder: () => req("/search-plan/order", { method: "POST" }),
+  searchPlanClaim: (utr) => req("/search-plan/claim", { method: "POST", body: { utr } }),
+  adminSearchPlans: (status) => req(`/portal/admin/search-plans${status ? `?status=${status}` : ""}`),
+  adminMarkSearchPlanPaid: (id, utr) => req(`/portal/admin/search-plans/${id}/mark-paid`, { method: "POST", body: { utr } }),
 
   // ---- client: billing / invoices ----
   invoices: () => req("/portal/invoices"),
