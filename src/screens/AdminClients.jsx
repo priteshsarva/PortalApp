@@ -75,6 +75,17 @@ function ClientModal({ u, onClose }) {
   const [result, setResult] = useState(null); // { temp_password? } or error string
   const [threshold, setThreshold] = useState(u.payout_threshold ?? "");
   const [thMsg, setThMsg] = useState("");
+  const [plans, setPlans] = useState([]);
+  const [planSel, setPlanSel] = useState("");
+  const [planMsg, setPlanMsg] = useState("");
+  const planActive = u.search_plan_until && new Date(u.search_plan_until) > new Date();
+
+  useEffect(() => { api.adminPlans().then((r) => setPlans((r.plans || []).filter((p) => p.show_on_search))).catch(() => {}); }, []);
+  async function applyPlan() {
+    setPlanMsg("saving…");
+    try { await api.adminGrantSearchPlan(u.id, planSel || null); setPlanMsg(planSel ? "✓ plan granted" : "✓ plan revoked"); }
+    catch (e) { setPlanMsg("Error: " + e.message); }
+  }
 
   async function saveThreshold() {
     setThMsg("saving…");
@@ -127,6 +138,22 @@ function ClientModal({ u, onClose }) {
         <Btn small tone="lime" onClick={saveThreshold}>Save threshold</Btn>
         {thMsg && <span style={{ fontSize: 12, color: thMsg.startsWith("Error") ? "#b3261e" : "#2e7d32" }}>{thMsg}</span>}
       </div>
+
+      <div style={{ fontWeight: 700, fontSize: 13, margin: "16px 0 8px" }}>Search plan</div>
+      <div style={{ fontSize: 12, color: planActive ? "#14663a" : "#6b7688", marginBottom: 6 }}>
+        {planActive
+          ? `Active until ${fmtDate(u.search_plan_until)} · ${u.search_plan_views ? u.search_plan_views + " product views" : "unlimited views"}`
+          : "No active search plan — on the free tier (50 views)."}
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <select style={{ ...inputStyle, maxWidth: 240 }} value={planSel} onChange={(e) => setPlanSel(e.target.value)}>
+          <option value="">— remove / free tier —</option>
+          {plans.map((p) => <option key={p.id} value={p.id}>{p.name} · ₹{p.price} · {p.limits?.search_views ? `${p.limits.search_views} views` : "unlimited"}</option>)}
+        </select>
+        <Btn small tone="lime" onClick={applyPlan}>Apply plan</Btn>
+        {planMsg && <span style={{ fontSize: 12, color: planMsg.startsWith("Error") ? "#b3261e" : "#2e7d32" }}>{planMsg}</span>}
+      </div>
+      <div style={{ fontSize: 11, color: "#8a93a3", marginTop: 4, marginBottom: 6 }}>Applies immediately — only after the payment is confirmed. Upgrading mid-plan replaces the current one from now.</div>
 
       <div style={{ fontWeight: 700, fontSize: 13, margin: "16px 0 8px" }}>Reset password</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

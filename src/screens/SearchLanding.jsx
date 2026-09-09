@@ -85,7 +85,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
   }
 
   const remaining = quota && quota.remaining;
-  const unlimited = quota && quota.plan;
+  const unlimited = quota && quota.unlimited;
 
   return (
     <div style={{ minHeight: "100vh", background: C.paper, fontFamily: "ui-sans-serif, system-ui, sans-serif", color: "#1b2230" }}>
@@ -311,50 +311,55 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
   );
 }
 
-// ---- Plans: Free vs Pro (₹100/mo unlimited views, manual UPI reconcile) ----
-function PlanRow({ name, price, perks, highlight }) {
+// ---- Plans: admin-managed plans, clickable -> pay via the admin UPI gateway ----
+function PlanCard({ name, price, sub, perks, highlight, onChoose, chooseLabel }) {
   return (
     <div style={{ border: `1px solid ${highlight ? "#c9de7a" : "#e6e9f0"}`, background: highlight ? "#fbfff0" : "#fff", borderRadius: 11, padding: 13, marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
         <strong style={{ fontSize: 15 }}>{name}</strong>
-        <span style={{ fontWeight: 800, fontSize: 15 }}>{price}</span>
+        <span style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>{price}</span>
       </div>
+      {sub && <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>{sub}</div>}
       <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none", fontSize: 12.5, color: "#42505f" }}>
-        {perks.map((p, i) => <li key={i} style={{ padding: "2px 0" }}>✓ {p}</li>)}
+        {perks.filter(Boolean).map((p, i) => <li key={i} style={{ padding: "2px 0" }}>✓ {p}</li>)}
       </ul>
+      {onChoose && <button onClick={onChoose} style={{ ...btnPrimary, marginTop: 10 }}>{chooseLabel || "Choose plan"}</button>}
     </div>
   );
 }
 
 function PlanModal({ onClose, signedIn, onNeedSignup }) {
-  const [data, setData] = useState(null);
+  const [plans, setPlans] = useState(null);
+  const [chosen, setChosen] = useState(null);   // plan being paid for
+  const [data, setData] = useState(null);        // { order, amount, upi }
   const [err, setErr] = useState("");
   const [claimed, setClaimed] = useState(false);
-  const [pay, setPay] = useState(false);       // reveal the UPI pay panel
   const [utr, setUtr] = useState("");
-  useEffect(() => { if (pay && signedIn) api.searchPlanOrder().then(setData).catch((e) => setErr(e.message)); }, [pay, signedIn]);
 
-  const upi = data?.upi || {};
-  const amount = data?.amount || 100;
-  const link = upi.upi_id ? `upi://pay?pa=${encodeURIComponent(upi.upi_id)}&pn=${encodeURIComponent(upi.upi_name || "Server Products")}&am=${amount}&cu=INR&tn=${encodeURIComponent("Search plan")}` : null;
+  useEffect(() => { api.searchPlans().then((r) => setPlans(r.plans || [])).catch((e) => setErr(e.message)); }, []);
+
+  function choose(plan) {
+    if (!signedIn) return onNeedSignup();
+    setChosen(plan); setData(null); setErr("");
+    api.searchPlanOrder(plan.id).then(setData).catch((e) => setErr(e.message));
+  }
   async function claim() { try { await api.searchPlanClaim(utr.trim()); setClaimed(true); } catch (e) { setErr(e.message); } }
 
-  return (
-    <Modal title="Plans" onClose={onClose}>
-      {claimed ? (
-        <p style={{ fontSize: 13.5, color: "#14663a" }}>Thanks! We'll confirm your payment shortly and unlock unlimited product views on your account.</p>
-      ) : (
-        <>
-          {/* plan list — always visible */}
-          <PlanRow name="Free" price="₹0" perks={["Unlimited search & browsing", "50 free product views", "Request new source sites"]} />
-          <PlanRow name="Pro" price="₹100 / month" highlight perks={["Everything in Free", "Unlimited product views", "30 days per payment"]} />
-          {err && <div style={{ background: "#fdecec", color: "#b23a48", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
+  const upi = data?.upi || {};
+  const amount = data?.amount ?? (chosen ? Number(chosen.price) : 0);
+  const link = upi.upi_id ? `upi://pay?pa=${encodeURIComponent(upi.upi_id)}&pn=${encodeURIComponent(upi.upi_name || "Server Products")}&am=${amount}&cu=INR&tn=${encodeURIComponent("Search plan")}` : null;
+  const per = (p) => `/ ${p.interval_count > 1 ? p.interval_count + " " : ""}${p.interval}${p.interval_count > 1 ? "s" : ""}`;
+  const allowance = (p) => (p.limits && p.limits.search_views) ? `${p.limits.search_views} product views` : "Unlimited product views";
 
-          {!pay ? (
-            <button onClick={() => (signedIn ? setPay(true) : onNeedSignup())} style={btnPrimary}>
-              {signedIn ? "Upgrade to Pro — ₹100/month" : "Sign up to upgrade"}
-            </button>
-          ) : upi.upi_id ? (
+  return (
+    <Modal title={chosen ? `Pay for ${chosen.name}` : "Plans"} onClose={onClose}>
+      {err && <div style={{ background: "#fdecec", color: "#b23a48", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
+      {claimed ? (
+        <p style={{ fontSize: 13.5, color: "#14663a" }}>Thanks! We'll confirm your payment shortly and unlock your plan on your account.</p>
+      ) : chosen ? (
+        <>
+          <button onClick={() => { setChosen(null); setData(null); }} style={{ background: "none", border: "none", color: "#3b6fd8", fontSize: 12.5, cursor: "pointer", padding: 0, marginBottom: 10 }}>← All plans</button>
+          {upi.upi_id ? (
             <>
               <div style={{ background: "#f6f7f9", border: "1px solid #e6e9f0", borderRadius: 10, padding: 14, textAlign: "center", marginBottom: 12 }}>
                 <div style={{ fontSize: 22, fontWeight: 800 }}>{inr(amount)}</div>
@@ -363,9 +368,21 @@ function PlanModal({ onClose, signedIn, onNeedSignup }) {
                 {link && <a href={link} style={{ ...btnPrimary, display: "inline-block", textAlign: "center", textDecoration: "none", width: "auto", padding: "9px 18px" }}>Open UPI app</a>}
               </div>
               <input style={input} placeholder="UPI reference / UTR (optional)" value={utr} onChange={(e) => setUtr(e.target.value)} />
-              <button onClick={claim} style={btnPrimary}>I've paid ₹100</button>
+              <button onClick={claim} style={btnPrimary}>I've paid {inr(amount)}</button>
+              <p style={{ fontSize: 11.5, color: "#8a93a3", marginTop: 8, textAlign: "center" }}>Your plan activates once we confirm the payment.</p>
             </>
-          ) : <p style={{ fontSize: 13, color: "#8a6100", marginTop: 4 }}>Loading payment details… if this persists, payments aren't configured yet.</p>}
+          ) : <p style={{ fontSize: 13, color: "#8a6100" }}>Loading payment details… if this persists, the payment UPI isn't configured yet.</p>}
+        </>
+      ) : (
+        <>
+          <PlanCard name="Free" price="₹0" perks={["Unlimited search & browsing", "50 free product views", "Request new source sites"]} />
+          {plans === null ? <p style={{ fontSize: 13, color: "#9aa3b2" }}>Loading plans…</p>
+            : plans.length === 0 ? <p style={{ fontSize: 13, color: "#8a6100" }}>No paid plans available yet.</p>
+            : plans.map((p) => (
+              <PlanCard key={p.id} highlight name={p.name} price={inr(p.price)} sub={per(p)}
+                perks={[allowance(p), ...(Array.isArray(p.features) ? p.features : []), p.description]}
+                onChoose={() => choose(p)} chooseLabel={signedIn ? `Choose ${p.name}` : "Sign up to buy"} />
+            ))}
         </>
       )}
     </Modal>

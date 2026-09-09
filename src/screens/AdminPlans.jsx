@@ -28,6 +28,19 @@ export default function AdminPlans() {
     catch (e) { setError(e); }
     finally { setBusyId(null); }
   }
+  async function toggleSearch(p) {
+    setBusyId(p.id);
+    try { await api.adminUpdatePlan(p.id, { show_on_search: !p.show_on_search }); load(); }
+    catch (e) { setError(e); }
+    finally { setBusyId(null); }
+  }
+  async function remove(p) {
+    if (!window.confirm(`Delete plan "${p.name}"? This can't be undone.`)) return;
+    setBusyId(p.id);
+    try { await api.adminDeletePlan(p.id); load(); }
+    catch (e) { setError(e); }
+    finally { setBusyId(null); }
+  }
 
   return (
     <div>
@@ -52,6 +65,7 @@ export default function AdminPlans() {
                     <span style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</span>
                     <Badge status={p.active ? "active" : "paused"} />
                     {p.kind && p.kind !== "retail" && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: "#eef4ff", color: "#2b5bb5" }}>{p.kind}</span>}
+                    {p.show_on_search && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: "#eef7d6", color: "#4a5a00" }}>search landing · {p.limits?.search_views ? `${p.limits.search_views} views` : "unlimited"}</span>}
                   </div>
                   <div style={{ fontSize: 13.5, color: "#1b2230", marginTop: 4 }}>
                     <strong>{money(p.price, p.currency)}</strong>
@@ -71,9 +85,17 @@ export default function AdminPlans() {
                     </div>
                   )}
                 </div>
-                <Btn tone={p.active ? "ghost" : "lime"} small disabled={busyId === p.id} onClick={() => toggleActive(p)}>
-                  {busyId === p.id ? "…" : p.active ? "Pause" : "Resume"}
-                </Btn>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+                  <Btn small tone={p.show_on_search ? "lime" : "ghost"} disabled={busyId === p.id} onClick={() => toggleSearch(p)}>
+                    {p.show_on_search ? "On search page ✓" : "Show on search page"}
+                  </Btn>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Btn tone={p.active ? "ghost" : "lime"} small disabled={busyId === p.id} onClick={() => toggleActive(p)}>
+                      {busyId === p.id ? "…" : p.active ? "Pause" : "Resume"}
+                    </Btn>
+                    <Btn tone="ghost" small disabled={busyId === p.id} onClick={() => remove(p)}>Delete</Btn>
+                  </div>
+                </div>
               </div>
             </Card>
           ))}
@@ -87,7 +109,7 @@ export default function AdminPlans() {
 
 function NewPlanModal({ onClose, onDone }) {
   const [f, setF] = useState({ name: "", price: "", currency: "INR", interval: "month", interval_count: 1, description: "", sort_order: 0,
-    kind: "retail", features: "", max_products: "", max_images: "", allow_payout_routing: false });
+    kind: "retail", features: "", max_products: "", max_images: "", allow_payout_routing: false, show_on_search: false, search_views: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
@@ -100,10 +122,11 @@ function NewPlanModal({ onClose, onDone }) {
       if (f.max_products !== "") limits.max_products = Number(f.max_products) || 0;
       if (f.max_images !== "") limits.max_images = Number(f.max_images) || 0;
       if (f.allow_payout_routing) limits.allow_payout_routing = true;
+      if (f.search_views !== "") limits.search_views = Number(f.search_views) || 0;
       await api.adminCreatePlan({
         name: f.name, price: Number(f.price), currency: f.currency, interval: f.interval,
         interval_count: Number(f.interval_count) || 1, description: f.description,
-        sort_order: Number(f.sort_order) || 0, kind: f.kind,
+        sort_order: Number(f.sort_order) || 0, kind: f.kind, show_on_search: f.show_on_search,
         features: f.features.split("\n").map((s) => s.trim()).filter(Boolean),
         limits,
       });
@@ -154,6 +177,15 @@ function NewPlanModal({ onClose, onDone }) {
           <input type="checkbox" checked={f.allow_payout_routing} onChange={(e) => set("allow_payout_routing", e.target.checked)} />
           Allow platform-held payments &amp; wallet payouts (per-vendor payment routing)
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#42505f", margin: "2px 0 6px", cursor: "pointer" }}>
+          <input type="checkbox" checked={f.show_on_search} onChange={(e) => set("show_on_search", e.target.checked)} />
+          Show this plan on the public catalogue-search landing page
+        </label>
+        {f.show_on_search && (
+          <Field label="Product views this plan grants (blank / 0 = unlimited)">
+            <input style={inputStyle} value={f.search_views} onChange={(e) => set("search_views", e.target.value)} inputMode="numeric" placeholder="e.g. 500 — or leave blank for unlimited" />
+          </Field>
+        )}
         <Field label="Sort order"><input style={inputStyle} value={f.sort_order} onChange={(e) => set("sort_order", e.target.value)} inputMode="numeric" /></Field>
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <Btn tone="lime" onClick={submit} disabled={busy}>{busy ? "Creating…" : "Create plan"}</Btn>

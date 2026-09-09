@@ -48,21 +48,24 @@ export const api = {
   adminPlans: () => req("/portal/admin/plans"),
   adminCreatePlan: (body) => req("/portal/admin/plans", { method: "POST", body }),
   adminUpdatePlan: (id, body) => req(`/portal/admin/plans/${id}`, { method: "PATCH", body }),
+  adminDeletePlan: (id) => req(`/portal/admin/plans/${id}`, { method: "DELETE" }),
   me: () => req("/auth/me"),
 
   // ---- public catalogue-search landing (anon 3 free -> OTP 50 free -> ₹100/mo) ----
   searchCatalogue: (params) => req(`/search/catalogue${params ? `?${new URLSearchParams(params)}` : ""}`, { auth: true }),
   searchSources: () => req("/search/sources", { auth: true }),
   searchQuota: () => req("/search/quota", { auth: true }),
+  searchPlans: () => req("/search/plans", { auth: true }),
   searchConsume: (key) => req("/search/consume", { method: "POST", auth: true, body: { key } }),
   otpSend: (mobile) => req("/search-auth/otp/send", { method: "POST", auth: false, body: { mobile } }),
   otpVerify: (mobile, code) => req("/search-auth/otp/verify", { method: "POST", auth: false, body: { mobile, code } }),
   firebaseAuth: (idToken) => req("/search-auth/firebase", { method: "POST", auth: false, body: { idToken } }),
   completeProfile: (body) => req("/search-auth/complete-profile", { method: "POST", body }),
-  searchPlanOrder: () => req("/search-plan/order", { method: "POST" }),
+  searchPlanOrder: (plan_id) => req("/search-plan/order", { method: "POST", body: { plan_id } }),
   searchPlanClaim: (utr) => req("/search-plan/claim", { method: "POST", body: { utr } }),
   adminSearchPlans: (status) => req(`/portal/admin/search-plans${status ? `?status=${status}` : ""}`),
   adminMarkSearchPlanPaid: (id, utr) => req(`/portal/admin/search-plans/${id}/mark-paid`, { method: "POST", body: { utr } }),
+  adminGrantSearchPlan: (userId, plan_id) => req(`/portal/admin/users/${userId}/search-plan`, { method: "POST", body: { plan_id } }),
 
   // ---- client: billing / invoices ----
   invoices: () => req("/portal/invoices"),
