@@ -14,6 +14,12 @@ const input = { width: "100%", boxSizing: "border-box", padding: "11px 13px", bo
 export default function SearchLanding({ onSignedIn, onSignIn }) {
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
+  const [stock, setStock] = useState("in");        // default: show available products
+  const [sort, setSort] = useState("newest");
+  const [brand, setBrand] = useState("");
+  const [size, setSize] = useState("");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
   const [source, setSource] = useState("");
   const [sources, setSources] = useState([]);
   const [items, setItems] = useState([]);
@@ -31,7 +37,12 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
   function run(reset) {
     const p = reset ? 1 : page + 1;
     setLoading(true); setError("");
-    const params = { ...(q && { q }), ...(category && { category }), ...(source && { source }), page: p, limit: 24 };
+    const params = {
+      ...(q && { q }), ...(category && { category }), ...(stock && { stock }),
+      ...(sort && sort !== "newest" && { sort }), ...(brand && { brand }), ...(size && { size }),
+      ...(source && { source }), ...(priceMin && { price_min: priceMin }), ...(priceMax && { price_max: priceMax }),
+      page: p, limit: 24,
+    };
     api.searchCatalogue(params)
       .then((r) => {
         setItems((prev) => (reset ? r.results : [...prev, ...r.results]));
@@ -47,8 +58,11 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
       })
       .finally(() => setLoading(false));
   }
-  // debounce on filter change (initial load has empty q -> browsing, not counted)
-  useEffect(() => { const t = setTimeout(() => run(true), 350); return () => clearTimeout(t); /* eslint-disable-next-line */ }, [q, category, source]);
+  // debounce on filter change (searching + browsing are free — nothing counts here)
+  useEffect(() => { const t = setTimeout(() => run(true), 350); return () => clearTimeout(t); /* eslint-disable-next-line */ }, [q, category, stock, sort, brand, size, source, priceMin, priceMax]);
+  function clearAll() { setQ(""); setCategory(""); setStock("in"); setSort("newest"); setBrand(""); setSize(""); setSource(""); setPriceMin(""); setPriceMax(""); }
+  const activeFilters = [category, size, brand, source, priceMin, priceMax].filter(Boolean).length + (stock !== "in" ? 1 : 0) + (sort !== "newest" ? 1 : 0);
+  const SORTS = [["newest", "Newest"], ["price_asc", "Price: low → high"], ["price_desc", "Price: high → low"], ["name", "Name A–Z"]];
 
   // Called after OTP verify / profile completion — unlock searching right away.
   function afterAuth(user) {
@@ -80,6 +94,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
         <div style={{ width: 30, height: 30, borderRadius: 8, background: C.lime, display: "grid", placeItems: "center" }}><KeyRound size={17} color={C.ink} /></div>
         <strong style={{ fontSize: 16 }}>Server Products</strong>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
+          <button onClick={() => setModal("plan")} style={{ background: "none", color: "#fff", border: "1px solid #33405a", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>Plans</button>
           {(me || signedIn)
             ? <button onClick={() => onSignedIn(me || {})} style={{ background: C.lime, color: C.ink, border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>My dashboard →</button>
             : <button onClick={onSignIn} style={{ background: "none", color: "#fff", border: "1px solid #33405a", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>Sign in</button>}
@@ -94,6 +109,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
         </div>
 
         <div style={{ background: "#fff", border: "1px solid #e6e9f0", borderRadius: 14, padding: 14, boxShadow: "0 6px 22px rgba(15,23,38,0.05)" }}>
+          {/* row 1: search + category + stock + sort */}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
               <Search size={16} style={{ position: "absolute", left: 12, top: 13, color: "#9aa3b2" }} />
@@ -102,11 +118,29 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
             <select style={{ ...input, width: "auto", minWidth: 130 }} value={category} onChange={(e) => setCategory(e.target.value)}>
               <option value="">All categories</option><option value="watches">Watches</option><option value="shoes">Shoes</option>
             </select>
+            <select style={{ ...input, width: "auto", minWidth: 120 }} value={stock} onChange={(e) => setStock(e.target.value)}>
+              <option value="in">In stock</option><option value="">All stock</option><option value="out">Out of stock</option>
+            </select>
+            <select style={{ ...input, width: "auto", minWidth: 150 }} value={sort} onChange={(e) => setSort(e.target.value)}>
+              {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          {/* row 2: brand + size + source + price + clear */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+            <input style={{ ...input, width: 150 }} placeholder="Brand (e.g. Rolex)" value={brand} onChange={(e) => setBrand(e.target.value)} />
+            <input style={{ ...input, width: 100 }} placeholder="Size" value={size} onChange={(e) => setSize(e.target.value)} />
             <select style={{ ...input, width: "auto", minWidth: 160 }} value={source} onChange={(e) => setSource(e.target.value)}>
               <option value="">All sources</option>
               {sources.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.category})</option>)}
             </select>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input style={{ ...input, width: 90 }} type="number" placeholder="₹ min" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
+              <span style={{ color: "#9aa3b2" }}>–</span>
+              <input style={{ ...input, width: 90 }} type="number" placeholder="₹ max" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+            </div>
+            {activeFilters > 0 && <button onClick={clearAll} style={{ background: "none", border: "none", color: "#3b6fd8", fontSize: 12.5, cursor: "pointer" }}>Clear filters ({activeFilters})</button>}
           </div>
+          {/* row 3: add-source + quota */}
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
             <button onClick={() => (signedIn ? setModal("source") : setModal("signup"))}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#eef7d6", color: "#4a5a00", border: "1px solid #d7e89a", borderRadius: 9, padding: "8px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -114,8 +148,8 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
             </button>
             {quota && (
               <span style={{ marginLeft: "auto", fontSize: 13, color: unlimited ? "#14663a" : "#6b7688" }}>
-                {unlimited ? "✓ Unlimited search (active plan)"
-                  : `${remaining ?? 0} free ${remaining === 1 ? "search" : "searches"} left`}
+                {unlimited ? "✓ Unlimited views (Pro plan active)"
+                  : `${remaining ?? 0} free product ${remaining === 1 ? "view" : "views"} left`}
               </span>
             )}
           </div>
@@ -137,7 +171,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
                     style={{ border: "1px solid #e6e9f0", borderRadius: 12, overflow: "hidden", background: "#fff", display: "flex", flexDirection: "column", cursor: "pointer" }}>
                     <div style={{ aspectRatio: "1/1", background: "#f4f5f8", position: "relative" }}>
                       {p.image ? <img src={p.image} alt={p.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ display: "grid", placeItems: "center", height: "100%", color: "#c4ccd8", fontSize: 12 }}>No image</div>}
-                      {!p.in_stock && <span style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.7)", color: "#fff", fontSize: 10, padding: "2px 7px", borderRadius: 4 }}>Out of stock</span>}
+                      {!p.in_stock && <span style={{ position: "absolute", top: 8, left: 8, background: "#d92d20", color: "#fff", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4 }}>Out of stock</span>}
                       <span style={{ position: "absolute", top: 8, right: 8, background: "#fff", color: "#42505f", fontSize: 10, padding: "2px 7px", borderRadius: 4, textTransform: "capitalize" }}>{p.category}</span>
                     </div>
                     <div style={{ padding: 11, display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
@@ -165,7 +199,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
       </div>
 
       {modal === "signup" && <SignupModal onClose={() => setModal("")} onAuthed={afterAuth} onSignIn={onSignIn} />}
-      {modal === "plan" && <PlanModal onClose={() => setModal("")} />}
+      {modal === "plan" && <PlanModal onClose={() => setModal("")} signedIn={signedIn} onNeedSignup={() => setModal("signup")} />}
       {modal === "source" && <AddSourceModal onClose={() => setModal("")} />}
     </div>
   );
@@ -277,29 +311,50 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
   );
 }
 
-// ---- ₹100/month search-only plan (manual UPI reconcile) ----
-function PlanModal({ onClose }) {
+// ---- Plans: Free vs Pro (₹100/mo unlimited views, manual UPI reconcile) ----
+function PlanRow({ name, price, perks, highlight }) {
+  return (
+    <div style={{ border: `1px solid ${highlight ? "#c9de7a" : "#e6e9f0"}`, background: highlight ? "#fbfff0" : "#fff", borderRadius: 11, padding: 13, marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <strong style={{ fontSize: 15 }}>{name}</strong>
+        <span style={{ fontWeight: 800, fontSize: 15 }}>{price}</span>
+      </div>
+      <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none", fontSize: 12.5, color: "#42505f" }}>
+        {perks.map((p, i) => <li key={i} style={{ padding: "2px 0" }}>✓ {p}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+function PlanModal({ onClose, signedIn, onNeedSignup }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [claimed, setClaimed] = useState(false);
+  const [pay, setPay] = useState(false);       // reveal the UPI pay panel
   const [utr, setUtr] = useState("");
-  useEffect(() => { api.searchPlanOrder().then(setData).catch((e) => setErr(e.message)); }, []);
+  useEffect(() => { if (pay && signedIn) api.searchPlanOrder().then(setData).catch((e) => setErr(e.message)); }, [pay, signedIn]);
 
   const upi = data?.upi || {};
   const amount = data?.amount || 100;
   const link = upi.upi_id ? `upi://pay?pa=${encodeURIComponent(upi.upi_id)}&pn=${encodeURIComponent(upi.upi_name || "Server Products")}&am=${amount}&cu=INR&tn=${encodeURIComponent("Search plan")}` : null;
-
   async function claim() { try { await api.searchPlanClaim(utr.trim()); setClaimed(true); } catch (e) { setErr(e.message); } }
 
   return (
-    <Modal title="Keep searching — ₹100/month" onClose={onClose}>
+    <Modal title="Plans" onClose={onClose}>
       {claimed ? (
-        <p style={{ fontSize: 13.5, color: "#14663a" }}>Thanks! We'll confirm your payment shortly and unlock unlimited search on your account.</p>
+        <p style={{ fontSize: 13.5, color: "#14663a" }}>Thanks! We'll confirm your payment shortly and unlock unlimited product views on your account.</p>
       ) : (
         <>
-          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 14px" }}>You've used your 50 free searches. Get <strong>unlimited catalogue search for 30 days</strong> for just ₹100.</p>
+          {/* plan list — always visible */}
+          <PlanRow name="Free" price="₹0" perks={["Unlimited search & browsing", "50 free product views", "Request new source sites"]} />
+          <PlanRow name="Pro" price="₹100 / month" highlight perks={["Everything in Free", "Unlimited product views", "30 days per payment"]} />
           {err && <div style={{ background: "#fdecec", color: "#b23a48", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
-          {upi.upi_id ? (
+
+          {!pay ? (
+            <button onClick={() => (signedIn ? setPay(true) : onNeedSignup())} style={btnPrimary}>
+              {signedIn ? "Upgrade to Pro — ₹100/month" : "Sign up to upgrade"}
+            </button>
+          ) : upi.upi_id ? (
             <>
               <div style={{ background: "#f6f7f9", border: "1px solid #e6e9f0", borderRadius: 10, padding: 14, textAlign: "center", marginBottom: 12 }}>
                 <div style={{ fontSize: 22, fontWeight: 800 }}>{inr(amount)}</div>
@@ -310,7 +365,7 @@ function PlanModal({ onClose }) {
               <input style={input} placeholder="UPI reference / UTR (optional)" value={utr} onChange={(e) => setUtr(e.target.value)} />
               <button onClick={claim} style={btnPrimary}>I've paid ₹100</button>
             </>
-          ) : <p style={{ fontSize: 13, color: "#8a6100" }}>Payments aren't configured yet — please contact us to activate the plan.</p>}
+          ) : <p style={{ fontSize: 13, color: "#8a6100", marginTop: 4 }}>Loading payment details… if this persists, payments aren't configured yet.</p>}
         </>
       )}
     </Modal>
