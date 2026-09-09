@@ -199,8 +199,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
       </div>
 
       {modal === "signup" && <SignupModal onClose={() => setModal("")} onAuthed={afterAuth} onSignIn={onSignIn} />}
-      {modal === "plan" && <PlanModal onClose={() => setModal("")} signedIn={signedIn} onNeedSignup={() => setModal("signup")}
-        onGranted={() => api.searchQuota().then((r) => setQuota(r.quota)).catch(() => {})} />}
+      {modal === "plan" && <PlanModal onClose={() => setModal("")} signedIn={signedIn} onAuthed={afterAuth} />}
       {modal === "source" && <AddSourceModal onClose={() => setModal("")} />}
     </div>
   );
@@ -219,17 +218,21 @@ function Modal({ title, children, onClose }) {
   );
 }
 
-// ---- mobile + OTP signup (grants 50 free searches), then optional details ----
-function SignupModal({ onClose, onAuthed, onSignIn }) {
-  const [step, setStep] = useState("mobile");   // mobile | code | details
+// ---- shared mobile OTP verify: mobile -> code (timer + resend) -> onAuthed ----
+function PhoneVerify({ onAuthed, onSignIn, cta = "Verify & continue" }) {
+  const [step, setStep] = useState("mobile");   // mobile | code
   const [mobile, setMobile] = useState("");
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
-  const recaptchaRef = useRef(null);       // firebase invisible reCAPTCHA
-  const confirmRef = useRef(null);         // firebase confirmationResult
+  const [left, setLeft] = useState(0);           // resend countdown
+  const recaptchaRef = useRef(null);
+  const confirmRef = useRef(null);
+
+  useEffect(() => { if (left <= 0) return; const t = setTimeout(() => setLeft((n) => n - 1), 1000); return () => clearTimeout(t); }, [left]);
+  // clear the firebase reCAPTCHA when this unmounts, so reopening is always fresh
+  useEffect(() => () => { try { recaptchaRef.current?.clear?.(); } catch { /* ignore */ } recaptchaRef.current = null; }, []);
 
   async function send() {
     setBusy(true); setErr("");
@@ -237,13 +240,13 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
       if (firebaseEnabled) {
         if (!recaptchaRef.current) recaptchaRef.current = makeRecaptcha("recaptcha-container");
         confirmRef.current = await sendPhoneOtp(mobile, recaptchaRef.current);
-        setStep("code");
       } else {
-        const r = await api.otpSend(mobile); if (r.dev_code) setDevCode(r.dev_code); setStep("code");
+        const r = await api.otpSend(mobile); if (r.dev_code) setDevCode(r.dev_code);
       }
+      setStep("code"); setCode(""); setLeft(45);
     } catch (e) {
       try { recaptchaRef.current?.clear?.(); } catch { /* ignore */ }
-      recaptchaRef.current = null;         // rebuild reCAPTCHA on retry
+      recaptchaRef.current = null;
       setErr(e.message);
     } finally { setBusy(false); }
   }
@@ -251,55 +254,70 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
     setBusy(true); setErr("");
     try {
       let r;
-      if (firebaseEnabled) {
-        const cred = await confirmRef.current.confirm(code);
-        r = await api.firebaseAuth(await cred.user.getIdToken());
-      } else {
-        r = await api.otpVerify(mobile, code);
-      }
-      setToken(r.token);          // authed now — searching is unlocked
-      onAuthed(r.user);
-      if (r.profile_complete) onClose();   // returning user, nothing to fill
-      else setStep("details");
+      if (firebaseEnabled) { const cred = await confirmRef.current.confirm(code); r = await api.firebaseAuth(await cred.user.getIdToken()); }
+      else r = await api.otpVerify(mobile, code);
+      setToken(r.token);
+      onAuthed(r);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   }
+
+  return (
+    <>
+      {err && <div style={errBox}>{err}</div>}
+      {step === "mobile" ? (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ ...input, width: "auto", flex: "0 0 auto", background: "#f4f5f8", color: "#6b7688" }}>+91</span>
+            <input style={input} placeholder="10-digit mobile number" value={mobile} autoFocus
+              onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" maxLength={10} />
+          </div>
+          <button onClick={send} disabled={busy || mobile.length !== 10} style={btnPrimary}>{busy ? "Sending…" : "Send OTP"}</button>
+          {onSignIn && <div style={{ textAlign: "center", marginTop: 12, fontSize: 12.5, color: "#6b7688" }}>Already have an account? <button onClick={onSignIn} style={linkBtn}>Sign in</button></div>}
+        </>
+      ) : (
+        <>
+          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 12px" }}>Enter the 6-digit code sent to +91 {mobile}.</p>
+          <input style={input} placeholder="6-digit code" value={code} autoFocus
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" maxLength={6} />
+          {devCode && <div style={{ fontSize: 12, color: "#8a6100", marginTop: 6 }}>Dev code: <strong>{devCode}</strong></div>}
+          <button onClick={verify} disabled={busy || code.length < 4} style={btnPrimary}>{busy ? "Verifying…" : cta}</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+            {left > 0
+              ? <span style={{ fontSize: 12.5, color: "#9aa3b2" }}>Resend code in {left}s</span>
+              : <button onClick={send} disabled={busy} style={linkBtn}>Resend code</button>}
+            <button onClick={() => { setStep("mobile"); setLeft(0); }} style={{ ...linkBtn, color: "#6b7688" }}>Change number</button>
+          </div>
+        </>
+      )}
+      <div id="recaptcha-container" />
+    </>
+  );
+}
+
+// ---- signup: verify mobile, then optional account details ----
+function SignupModal({ onClose, onAuthed, onSignIn }) {
+  const [phase, setPhase] = useState("verify");  // verify | details
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+
+  function afterVerify(r) { onAuthed(r.user); if (r.profile_complete) onClose(); else setPhase("details"); }
   async function saveDetails() {
     setBusy(true); setErr("");
     try { const r = await api.completeProfile({ name, email: email || undefined, password: password || undefined }); onAuthed(r.user); onClose(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   }
 
-  const title = step === "details" ? "You're in — 50 free searches" : "Get 50 free searches";
   return (
-    <Modal title={title} onClose={onClose}>
-      {err && <div style={{ background: "#fdecec", color: "#b23a48", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
-      {step === "mobile" && (
+    <Modal title={phase === "details" ? "You're in — 50 free views" : "Get 50 free product views"} onClose={onClose}>
+      {phase === "verify" ? (
         <>
-          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Sign up with your mobile number — no password needed. It takes a few seconds.</p>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ ...input, width: "auto", flex: "0 0 auto", background: "#f4f5f8", color: "#6b7688" }}>+91</span>
-            <input style={input} placeholder="10-digit mobile number" value={mobile}
-              onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-              inputMode="numeric" maxLength={10} />
-          </div>
-          <button onClick={send} disabled={busy || mobile.length !== 10} style={btnPrimary}>{busy ? "Sending…" : "Send OTP"}</button>
-          <div style={{ textAlign: "center", marginTop: 12, fontSize: 12.5, color: "#6b7688" }}>
-            Already have an account? <button onClick={onSignIn} style={{ background: "none", border: "none", color: "#3b6fd8", cursor: "pointer", fontSize: 12.5, padding: 0 }}>Sign in</button>
-          </div>
+          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Sign up with your mobile number — no password needed.</p>
+          <PhoneVerify onAuthed={afterVerify} onSignIn={onSignIn} />
         </>
-      )}
-      {step === "code" && (
+      ) : (
         <>
-          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Enter the 6-digit code we sent to +91 {mobile}.</p>
-          <input style={input} placeholder="6-digit code" value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} />
-          {devCode && <div style={{ fontSize: 12, color: "#8a6100", marginTop: 6 }}>Dev code: <strong>{devCode}</strong></div>}
-          <button onClick={verify} disabled={busy || code.length < 4} style={btnPrimary}>{busy ? "Verifying…" : "Verify & continue"}</button>
-          <button onClick={() => setStep("mobile")} style={btnGhost}>Change number</button>
-        </>
-      )}
-      {step === "details" && (
-        <>
-          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Your number is verified. Finish creating your account so you can also sign in with email later — or skip and keep searching.</p>
+          {err && <div style={errBox}>{err}</div>}
+          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Your number is verified. Finish creating your account so you can also sign in with email later — or skip.</p>
           <input style={input} placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
           <input style={{ ...input, marginTop: 10 }} type="email" placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input style={{ ...input, marginTop: 10 }} type="password" placeholder="Set a password (optional)" value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -307,15 +325,14 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
           <button onClick={onClose} style={btnGhost}>Skip for now</button>
         </>
       )}
-      <div id="recaptcha-container" />
     </Modal>
   );
 }
 
-// ---- Plans: admin-managed plans, clickable -> pay via the admin UPI gateway ----
-function PlanCard({ name, price, sub, perks, highlight, onChoose, chooseLabel }) {
+// ---- Plans: admin-managed plans -> (verify mobile if needed) -> pay ----
+function PlanCard({ name, price, sub, perks, onChoose, chooseLabel }) {
   return (
-    <div style={{ border: `1px solid ${highlight ? "#c9de7a" : "#e6e9f0"}`, background: highlight ? "#fbfff0" : "#fff", borderRadius: 11, padding: 13, marginBottom: 10 }}>
+    <div style={{ border: "1px solid #c9de7a", background: "#fbfff0", borderRadius: 11, padding: 13, marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
         <strong style={{ fontSize: 15 }}>{name}</strong>
         <span style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>{price}</span>
@@ -329,25 +346,27 @@ function PlanCard({ name, price, sub, perks, highlight, onChoose, chooseLabel })
   );
 }
 
-function PlanModal({ onClose, signedIn, onNeedSignup, onGranted }) {
+function PlanModal({ onClose, signedIn, onAuthed }) {
   const [plans, setPlans] = useState(null);
-  const [chosen, setChosen] = useState(null);   // plan being paid for
+  const [chosen, setChosen] = useState(null);
+  const [phase, setPhase] = useState("list");   // list | verify | pay | done | claimed
+  const [authed, setAuthed] = useState(signedIn);
   const [data, setData] = useState(null);        // { order, amount, upi }
-  const [err, setErr] = useState("");
-  const [claimed, setClaimed] = useState(false);
-  const [granted, setGranted] = useState(false); // free plan activated instantly
   const [utr, setUtr] = useState("");
+  const [err, setErr] = useState("");
 
   useEffect(() => { api.searchPlans().then((r) => setPlans(r.plans || [])).catch((e) => setErr(e.message)); }, []);
 
-  function choose(plan) {
-    if (!signedIn) return onNeedSignup();
-    setChosen(plan); setData(null); setErr("");
+  function order(plan) {
+    setErr(""); setData(null);
     api.searchPlanOrder(plan.id)
-      .then((d) => { if (d.granted) { setGranted(true); onGranted && onGranted(); } else setData(d); })
+      .then((d) => { if (d.granted) { setPhase("done"); onAuthed && onAuthed({}); } else { setData(d); setPhase("pay"); } })
       .catch((e) => setErr(e.message));
   }
-  async function claim() { try { await api.searchPlanClaim(utr.trim()); setClaimed(true); } catch (e) { setErr(e.message); } }
+  function choose(plan) { setChosen(plan); if (authed) order(plan); else setPhase("verify"); }
+  function afterVerify(r) { setAuthed(true); onAuthed && onAuthed(r.user); order(chosen); }
+  async function claim() { try { await api.searchPlanClaim(utr.trim()); setPhase("claimed"); } catch (e) { setErr(e.message); } }
+  function backToList() { setChosen(null); setData(null); setErr(""); setPhase("list"); }
 
   const upi = data?.upi || {};
   const amount = data?.amount ?? (chosen ? Number(chosen.price) : 0);
@@ -355,16 +374,23 @@ function PlanModal({ onClose, signedIn, onNeedSignup, onGranted }) {
   const per = (p) => `/ ${p.interval_count > 1 ? p.interval_count + " " : ""}${p.interval}${p.interval_count > 1 ? "s" : ""}`;
   const allowance = (p) => (p.limits && p.limits.search_views) ? `${p.limits.search_views} product views` : "Unlimited product views";
 
+  const title = phase === "verify" ? "Verify your mobile" : (phase === "pay" && chosen) ? `Pay for ${chosen.name}` : "Plans";
   return (
-    <Modal title={chosen ? `Pay for ${chosen.name}` : "Plans"} onClose={onClose}>
-      {err && <div style={{ background: "#fdecec", color: "#b23a48", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
-      {granted ? (
-        <p style={{ fontSize: 13.5, color: "#14663a" }}>Your plan is active — enjoy your product views! <button onClick={onClose} style={{ background: "none", border: "none", color: "#3b6fd8", cursor: "pointer", fontSize: 13.5, padding: 0 }}>Start browsing</button></p>
-      ) : claimed ? (
-        <p style={{ fontSize: 13.5, color: "#14663a" }}>Thanks! We'll confirm your payment shortly and unlock your plan on your account.</p>
-      ) : chosen ? (
+    <Modal title={title} onClose={onClose}>
+      {err && <div style={errBox}>{err}</div>}
+      {phase === "done" ? (
+        <p style={{ fontSize: 13.5, color: "#14663a" }}>Your plan is active — enjoy your product views! <button onClick={onClose} style={linkBtn}>Start browsing</button></p>
+      ) : phase === "claimed" ? (
+        <p style={{ fontSize: 13.5, color: "#14663a" }}>Thanks! We'll confirm your payment shortly and unlock your plan.</p>
+      ) : phase === "verify" ? (
         <>
-          <button onClick={() => { setChosen(null); setData(null); }} style={{ background: "none", border: "none", color: "#3b6fd8", fontSize: 12.5, cursor: "pointer", padding: 0, marginBottom: 10 }}>← All plans</button>
+          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 14px" }}>Verify your mobile number to continue to payment for <strong>{chosen?.name}</strong>.</p>
+          <PhoneVerify onAuthed={afterVerify} cta="Verify & continue to pay" />
+          <button onClick={backToList} style={btnGhost}>← Back to plans</button>
+        </>
+      ) : phase === "pay" ? (
+        <>
+          <button onClick={backToList} style={{ ...linkBtn, marginBottom: 10 }}>← All plans</button>
           {upi.upi_id ? (
             <>
               <div style={{ background: "#f6f7f9", border: "1px solid #e6e9f0", borderRadius: 10, padding: 14, textAlign: "center", marginBottom: 12 }}>
@@ -380,16 +406,13 @@ function PlanModal({ onClose, signedIn, onNeedSignup, onGranted }) {
           ) : <p style={{ fontSize: 13, color: "#8a6100" }}>Loading payment details… if this persists, the payment UPI isn't configured yet.</p>}
         </>
       ) : (
-        <>
-          <PlanCard name="Free" price="₹0" perks={["Unlimited search & browsing", "50 free product views", "Request new source sites"]} />
-          {plans === null ? <p style={{ fontSize: 13, color: "#9aa3b2" }}>Loading plans…</p>
-            : plans.length === 0 ? <p style={{ fontSize: 13, color: "#8a6100" }}>No paid plans available yet.</p>
-            : plans.map((p) => (
-              <PlanCard key={p.id} highlight name={p.name} price={Number(p.price) <= 0 ? "Free" : inr(p.price)} sub={Number(p.price) <= 0 ? null : per(p)}
-                perks={[allowance(p), ...(Array.isArray(p.features) ? p.features : []), p.description]}
-                onChoose={() => choose(p)} chooseLabel={!signedIn ? "Sign up to get" : Number(p.price) <= 0 ? "Get free" : `Choose ${p.name}`} />
-            ))}
-        </>
+        plans === null ? <p style={{ fontSize: 13, color: "#9aa3b2" }}>Loading plans…</p>
+          : plans.length === 0 ? <p style={{ fontSize: 13, color: "#8a6100" }}>No plans available yet.</p>
+          : plans.map((p) => (
+            <PlanCard key={p.id} name={p.name} price={Number(p.price) <= 0 ? "Free" : inr(p.price)} sub={Number(p.price) <= 0 ? null : per(p)}
+              perks={[allowance(p), ...(Array.isArray(p.features) ? p.features : []), p.description]}
+              onChoose={() => choose(p)} chooseLabel={Number(p.price) <= 0 ? "Get free" : `Choose ${p.name}`} />
+          ))
       )}
     </Modal>
   );
@@ -428,3 +451,5 @@ function AddSourceModal({ onClose }) {
 
 const btnPrimary = { width: "100%", marginTop: 12, background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "11px 14px", fontWeight: 700, fontSize: 14, cursor: "pointer" };
 const btnGhost = { width: "100%", marginTop: 8, background: "none", color: "#6b7688", border: "none", fontSize: 12.5, cursor: "pointer" };
+const errBox = { background: "#fdecec", color: "#b23a48", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 };
+const linkBtn = { background: "none", border: "none", color: "#3b6fd8", cursor: "pointer", fontSize: 12.5, padding: 0 };
