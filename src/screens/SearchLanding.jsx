@@ -199,7 +199,8 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
       </div>
 
       {modal === "signup" && <SignupModal onClose={() => setModal("")} onAuthed={afterAuth} onSignIn={onSignIn} />}
-      {modal === "plan" && <PlanModal onClose={() => setModal("")} signedIn={signedIn} onNeedSignup={() => setModal("signup")} />}
+      {modal === "plan" && <PlanModal onClose={() => setModal("")} signedIn={signedIn} onNeedSignup={() => setModal("signup")}
+        onGranted={() => api.searchQuota().then((r) => setQuota(r.quota)).catch(() => {})} />}
       {modal === "source" && <AddSourceModal onClose={() => setModal("")} />}
     </div>
   );
@@ -328,12 +329,13 @@ function PlanCard({ name, price, sub, perks, highlight, onChoose, chooseLabel })
   );
 }
 
-function PlanModal({ onClose, signedIn, onNeedSignup }) {
+function PlanModal({ onClose, signedIn, onNeedSignup, onGranted }) {
   const [plans, setPlans] = useState(null);
   const [chosen, setChosen] = useState(null);   // plan being paid for
   const [data, setData] = useState(null);        // { order, amount, upi }
   const [err, setErr] = useState("");
   const [claimed, setClaimed] = useState(false);
+  const [granted, setGranted] = useState(false); // free plan activated instantly
   const [utr, setUtr] = useState("");
 
   useEffect(() => { api.searchPlans().then((r) => setPlans(r.plans || [])).catch((e) => setErr(e.message)); }, []);
@@ -341,7 +343,9 @@ function PlanModal({ onClose, signedIn, onNeedSignup }) {
   function choose(plan) {
     if (!signedIn) return onNeedSignup();
     setChosen(plan); setData(null); setErr("");
-    api.searchPlanOrder(plan.id).then(setData).catch((e) => setErr(e.message));
+    api.searchPlanOrder(plan.id)
+      .then((d) => { if (d.granted) { setGranted(true); onGranted && onGranted(); } else setData(d); })
+      .catch((e) => setErr(e.message));
   }
   async function claim() { try { await api.searchPlanClaim(utr.trim()); setClaimed(true); } catch (e) { setErr(e.message); } }
 
@@ -354,7 +358,9 @@ function PlanModal({ onClose, signedIn, onNeedSignup }) {
   return (
     <Modal title={chosen ? `Pay for ${chosen.name}` : "Plans"} onClose={onClose}>
       {err && <div style={{ background: "#fdecec", color: "#b23a48", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>{err}</div>}
-      {claimed ? (
+      {granted ? (
+        <p style={{ fontSize: 13.5, color: "#14663a" }}>Your plan is active — enjoy your product views! <button onClick={onClose} style={{ background: "none", border: "none", color: "#3b6fd8", cursor: "pointer", fontSize: 13.5, padding: 0 }}>Start browsing</button></p>
+      ) : claimed ? (
         <p style={{ fontSize: 13.5, color: "#14663a" }}>Thanks! We'll confirm your payment shortly and unlock your plan on your account.</p>
       ) : chosen ? (
         <>
@@ -379,9 +385,9 @@ function PlanModal({ onClose, signedIn, onNeedSignup }) {
           {plans === null ? <p style={{ fontSize: 13, color: "#9aa3b2" }}>Loading plans…</p>
             : plans.length === 0 ? <p style={{ fontSize: 13, color: "#8a6100" }}>No paid plans available yet.</p>
             : plans.map((p) => (
-              <PlanCard key={p.id} highlight name={p.name} price={inr(p.price)} sub={per(p)}
+              <PlanCard key={p.id} highlight name={p.name} price={Number(p.price) <= 0 ? "Free" : inr(p.price)} sub={Number(p.price) <= 0 ? null : per(p)}
                 perks={[allowance(p), ...(Array.isArray(p.features) ? p.features : []), p.description]}
-                onChoose={() => choose(p)} chooseLabel={signedIn ? `Choose ${p.name}` : "Sign up to buy"} />
+                onChoose={() => choose(p)} chooseLabel={!signedIn ? "Sign up to get" : Number(p.price) <= 0 ? "Get free" : `Choose ${p.name}`} />
             ))}
         </>
       )}
