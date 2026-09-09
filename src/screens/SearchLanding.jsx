@@ -73,7 +73,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
 
   // Opening a product counts as a search; blocked when the free allowance runs out.
   function openProduct(p) {
-    api.searchConsume(`${p.category}:${p.productId}`)
+    api.searchConsume(p.category, p.productId)
       .then((r) => { if (r.quota) setQuota(r.quota); window.open(p.product_url, "_blank", "noopener"); })
       .catch((e) => {
         if (e.data?.quota) setQuota(e.data.quota);
