@@ -331,15 +331,20 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
 
 // ---- Plans: admin-managed plans -> (verify mobile if needed) -> pay ----
 function PlanCard({ name, price, sub, perks, onChoose, chooseLabel }) {
+  // de-dupe (case-insensitive) so an admin feature that repeats the auto
+  // allowance line doesn't show twice.
+  const items = [...new Map((perks || []).filter(Boolean).map((s) => [String(s).trim().toLowerCase(), String(s).trim()])).values()];
   return (
     <div style={{ border: "1px solid #c9de7a", background: "#fbfff0", borderRadius: 11, padding: 13, marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
         <strong style={{ fontSize: 15 }}>{name}</strong>
-        <span style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>{price}</span>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>{price}</div>
+          {sub && <div style={{ fontSize: 11.5, color: "#6b7688" }}>{sub}</div>}
+        </div>
       </div>
-      {sub && <div style={{ fontSize: 12, color: "#6b7688", marginTop: 2 }}>{sub}</div>}
-      <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none", fontSize: 12.5, color: "#42505f" }}>
-        {perks.filter(Boolean).map((p, i) => <li key={i} style={{ padding: "2px 0" }}>✓ {p}</li>)}
+      <ul style={{ margin: "10px 0 0", padding: 0, listStyle: "none", fontSize: 12.5, color: "#42505f" }}>
+        {items.map((p, i) => <li key={i} style={{ padding: "2px 0" }}>✓ {p}</li>)}
       </ul>
       {onChoose && <button onClick={onChoose} style={{ ...btnPrimary, marginTop: 10 }}>{chooseLabel || "Choose plan"}</button>}
     </div>
@@ -408,11 +413,16 @@ function PlanModal({ onClose, signedIn, onAuthed }) {
       ) : (
         plans === null ? <p style={{ fontSize: 13, color: "#9aa3b2" }}>Loading plans…</p>
           : plans.length === 0 ? <p style={{ fontSize: 13, color: "#8a6100" }}>No plans available yet.</p>
-          : plans.map((p) => (
-            <PlanCard key={p.id} name={p.name} price={Number(p.price) <= 0 ? "Free" : inr(p.price)} sub={Number(p.price) <= 0 ? null : per(p)}
-              perks={[allowance(p), ...(Array.isArray(p.features) ? p.features : []), p.description]}
-              onChoose={() => choose(p)} chooseLabel={Number(p.price) <= 0 ? "Get free" : `Choose ${p.name}`} />
-          ))
+          : plans.map((p) => {
+            const feats = Array.isArray(p.features) ? p.features : [];
+            // only auto-add the allowance line if the admin didn't already list views
+            const base = feats.some((x) => /view/i.test(x)) ? [] : [allowance(p)];
+            return (
+              <PlanCard key={p.id} name={p.name} price={Number(p.price) <= 0 ? "Free" : inr(p.price)} sub={Number(p.price) <= 0 ? null : per(p)}
+                perks={[...base, ...feats, p.description]}
+                onChoose={() => choose(p)} chooseLabel={Number(p.price) <= 0 ? "Get free" : `Choose ${p.name}`} />
+            );
+          })
       )}
     </Modal>
   );
