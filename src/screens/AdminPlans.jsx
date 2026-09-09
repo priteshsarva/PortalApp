@@ -181,11 +181,9 @@ function NewPlanModal({ onClose, onDone }) {
           <input type="checkbox" checked={f.show_on_search} onChange={(e) => set("show_on_search", e.target.checked)} />
           Show this plan on the public catalogue-search landing page
         </label>
-        {f.show_on_search && (
-          <Field label="Product views this plan grants (blank / 0 = unlimited)">
-            <input style={inputStyle} value={f.search_views} onChange={(e) => set("search_views", e.target.value)} inputMode="numeric" placeholder="e.g. 500 — or leave blank for unlimited" />
-          </Field>
-        )}
+        <Field label="Search limit — number of product views this plan allows (leave blank = unlimited)">
+          <input style={inputStyle} value={f.search_views} onChange={(e) => set("search_views", e.target.value)} inputMode="numeric" placeholder="e.g. 500 — blank for unlimited" />
+        </Field>
         <Field label="Sort order"><input style={inputStyle} value={f.sort_order} onChange={(e) => set("sort_order", e.target.value)} inputMode="numeric" /></Field>
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <Btn tone="lime" onClick={submit} disabled={busy}>{busy ? "Creating…" : "Create plan"}</Btn>
