@@ -3,6 +3,7 @@
 //   signed in (mobile+OTP): 50 free searches -> ₹100/mo search plan modal
 // A "search" = a new keyword; filter tweaks and "load more" don't cost one.
 import React, { useEffect, useRef, useState } from "react";
+import QRCode from "qrcode";
 import { Search, ExternalLink, KeyRound, PlusCircle, X } from "lucide-react";
 import { api, setToken, getToken } from "../api.js";
 import { firebaseEnabled, makeRecaptcha, sendPhoneOtp } from "../lib/firebase.js";
@@ -359,6 +360,7 @@ function PlanModal({ onClose, signedIn, onAuthed }) {
   const [data, setData] = useState(null);        // { order, amount, upi }
   const [utr, setUtr] = useState("");
   const [err, setErr] = useState("");
+  const [qr, setQr] = useState("");
 
   useEffect(() => { api.searchPlans().then((r) => setPlans(r.plans || [])).catch((e) => setErr(e.message)); }, []);
 
@@ -376,6 +378,7 @@ function PlanModal({ onClose, signedIn, onAuthed }) {
   const upi = data?.upi || {};
   const amount = data?.amount ?? (chosen ? Number(chosen.price) : 0);
   const link = upi.upi_id ? `upi://pay?pa=${encodeURIComponent(upi.upi_id)}&pn=${encodeURIComponent(upi.upi_name || "Server Products")}&am=${amount}&cu=INR&tn=${encodeURIComponent("Search plan")}` : null;
+  useEffect(() => { if (link) QRCode.toDataURL(link, { width: 420, margin: 2 }).then(setQr).catch(() => setQr("")); else setQr(""); }, [link]);
   const per = (p) => `/ ${p.interval_count > 1 ? p.interval_count + " " : ""}${p.interval}${p.interval_count > 1 ? "s" : ""}`;
   const allowance = (p) => (p.limits && p.limits.search_views) ? `${p.limits.search_views} product views` : "Unlimited product views";
 
@@ -400,9 +403,13 @@ function PlanModal({ onClose, signedIn, onAuthed }) {
             <>
               <div style={{ background: "#f6f7f9", border: "1px solid #e6e9f0", borderRadius: 10, padding: 14, textAlign: "center", marginBottom: 12 }}>
                 <div style={{ fontSize: 22, fontWeight: 800 }}>{inr(amount)}</div>
-                <div style={{ fontSize: 13, marginTop: 4 }}>Pay to UPI: <strong>{upi.upi_id}</strong></div>
+                {qr
+                  ? <img src={qr} alt={`Scan to pay ${inr(amount)}`} style={{ width: 190, height: 190, border: "1px solid #e6e9f0", borderRadius: 12, padding: 6, background: "#fff", margin: "8px auto 4px", display: "block" }} />
+                  : <div style={{ fontSize: 12, color: "#9aa3b2", padding: "18px 0" }}>Preparing QR… use the UPI ID below.</div>}
+                <div style={{ fontSize: 11.5, color: "#9aa3b2", marginBottom: 8 }}>Scan with any UPI app — amount is pre-filled</div>
+                <div style={{ fontSize: 13 }}>Pay to UPI: <strong>{upi.upi_id}</strong></div>
                 <div style={{ fontSize: 12, color: "#6b7688" }}>{upi.upi_name}</div>
-                {link && <a href={link} style={{ ...btnPrimary, display: "inline-block", textAlign: "center", textDecoration: "none", width: "auto", padding: "9px 18px" }}>Open UPI app</a>}
+                {link && <a href={link} style={{ ...btnPrimary, display: "inline-block", textAlign: "center", textDecoration: "none", width: "auto", padding: "9px 18px" }}>📲 Open UPI app</a>}
               </div>
               <input style={input} placeholder="UPI reference / UTR (optional)" value={utr} onChange={(e) => setUtr(e.target.value)} />
               <button onClick={claim} style={btnPrimary}>I've paid {inr(amount)}</button>
