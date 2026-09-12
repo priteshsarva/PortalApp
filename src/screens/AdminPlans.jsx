@@ -15,6 +15,7 @@ export default function AdminPlans() {
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [showNew, setShowNew] = useState(false);
+  const [editPlan, setEditPlan] = useState(null); // plan object when editing
 
   function load() {
     setError(null);
@@ -68,7 +69,12 @@ export default function AdminPlans() {
                     {p.show_on_search && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: "#eef7d6", color: "#4a5a00" }}>search landing · {p.limits?.search_views ? `${p.limits.search_views} views` : "unlimited"}</span>}
                   </div>
                   <div style={{ fontSize: 13.5, color: "#1b2230", marginTop: 4 }}>
-                    <strong>{money(p.price, p.currency)}</strong>
+                    {p.discount_price != null && p.discount_price !== "" ? (
+                      <>
+                        <strong>{money(p.discount_price, p.currency)}</strong>
+                        <span style={{ textDecoration: "line-through", color: "#9aa3b2", marginLeft: 6 }}>{money(p.price, p.currency)}</span>
+                      </>
+                    ) : <strong>{money(p.price, p.currency)}</strong>}
                     <span style={{ color: "#6b7688" }}> / {p.interval_count > 1 ? `${p.interval_count} ` : ""}{p.interval}{p.interval_count > 1 ? "s" : ""}</span>
                   </div>
                   {p.description && <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 4, maxWidth: 520 }}>{p.description}</div>}
@@ -90,6 +96,7 @@ export default function AdminPlans() {
                     {p.show_on_search ? "On search page ✓" : "Show on search page"}
                   </Btn>
                   <div style={{ display: "flex", gap: 6 }}>
+                    <Btn tone="ghost" small onClick={() => setEditPlan(p)}>Edit</Btn>
                     <Btn tone={p.active ? "ghost" : "lime"} small disabled={busyId === p.id} onClick={() => toggleActive(p)}>
                       {busyId === p.id ? "…" : p.active ? "Pause" : "Resume"}
                     </Btn>
@@ -102,49 +109,83 @@ export default function AdminPlans() {
         </div>
       )}
 
-      {showNew && <NewPlanModal onClose={() => setShowNew(false)} onDone={() => { setShowNew(false); load(); }} />}
+      {showNew && <PlanForm onClose={() => setShowNew(false)} onDone={() => { setShowNew(false); load(); }} />}
+      {editPlan && <PlanForm plan={editPlan} onClose={() => setEditPlan(null)} onDone={() => { setEditPlan(null); load(); }} />}
     </div>
   );
 }
 
-function NewPlanModal({ onClose, onDone }) {
-  const [f, setF] = useState({ name: "", price: "", currency: "INR", interval: "month", interval_count: 1, description: "", sort_order: 0,
-    kind: "retail", features: "", max_products: "", max_images: "", allow_payout_routing: false, show_on_search: false, search_views: "" });
+// Feature flags stored as booleans in plans.limits — checkboxes to add/remove
+// capabilities per plan. Existing gates: allow_payout_routing (enforced now);
+// the rest are consumed by their own features as those land.
+const PLAN_FLAGS = [
+  { key: "allow_payout_routing", label: "Platform-held payments & wallet payouts" },
+  { key: "allow_own_gateway", label: "Vendor's own payment gateway (used when they add keys)" },
+  { key: "remove_powered_by", label: "Remove the “Powered by” badge" },
+  { key: "custom_domain", label: "Custom domain" },
+  { key: "analytics", label: "Analytics dashboard" },
+  { key: "priority_support", label: "Priority support" },
+];
+
+function PlanForm({ plan, onClose, onDone }) {
+  const editing = !!plan;
+  const L = plan?.limits || {};
+  const [f, setF] = useState({
+    name: plan?.name || "", price: plan?.price ?? "", discount_price: plan?.discount_price ?? "",
+    currency: plan?.currency || "INR", interval: plan?.interval || "month", interval_count: plan?.interval_count || 1,
+    description: plan?.description || "", sort_order: plan?.sort_order ?? 0, kind: plan?.kind || "retail",
+    show_on_search: !!plan?.show_on_search,
+    features: Array.isArray(plan?.features) ? plan.features.join("\n") : "",
+    max_products: L.max_products ?? "", max_images: L.max_images ?? "", search_views: L.search_views ?? "",
+    flags: PLAN_FLAGS.reduce((o, ff) => { o[ff.key] = !!L[ff.key]; return o; }, {}),
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
+  const setFlag = (k, v) => setF((s) => ({ ...s, flags: { ...s.flags, [k]: v } }));
 
   async function submit() {
     if (!f.name.trim() || f.price === "" || isNaN(Number(f.price))) { setError(new Error("Name and a numeric price are required")); return; }
+    if (f.discount_price !== "" && f.discount_price != null && isNaN(Number(f.discount_price))) { setError(new Error("Discount price must be a number")); return; }
     setBusy(true); setError(null);
     try {
       const limits = {};
       if (f.max_products !== "") limits.max_products = Number(f.max_products) || 0;
       if (f.max_images !== "") limits.max_images = Number(f.max_images) || 0;
-      if (f.allow_payout_routing) limits.allow_payout_routing = true;
       if (f.search_views !== "") limits.search_views = Number(f.search_views) || 0;
-      await api.adminCreatePlan({
-        name: f.name, price: Number(f.price), currency: f.currency, interval: f.interval,
-        interval_count: Number(f.interval_count) || 1, description: f.description,
-        sort_order: Number(f.sort_order) || 0, kind: f.kind, show_on_search: f.show_on_search,
+      for (const ff of PLAN_FLAGS) if (f.flags[ff.key]) limits[ff.key] = true;
+      const body = {
+        name: f.name, price: Number(f.price),
+        discount_price: (f.discount_price === "" || f.discount_price == null) ? null : Number(f.discount_price),
+        currency: f.currency, interval: f.interval, interval_count: Number(f.interval_count) || 1,
+        description: f.description, sort_order: Number(f.sort_order) || 0, kind: f.kind, show_on_search: f.show_on_search,
         features: f.features.split("\n").map((s) => s.trim()).filter(Boolean),
         limits,
-      });
+      };
+      if (editing) await api.adminUpdatePlan(plan.id, body); else await api.adminCreatePlan(body);
       onDone();
     } catch (e) { setError(e); setBusy(false); }
   }
 
-  // lightweight modal (matches the app's overlay pattern without importing Modal
-  // in case its API differs — this is self-contained)
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,15,25,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
       <div style={{ background: "#fff", borderRadius: 14, padding: 22, width: "min(460px, 100%)", maxHeight: "90vh", overflow: "auto" }}>
-        <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 14 }}>New plan</div>
+        <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 14 }}>{editing ? "Edit plan" : "New plan"}</div>
         <ErrorNote error={error} />
         <Field label="Name"><input style={inputStyle} value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Starter" autoFocus /></Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <Field label="Price"><input style={inputStyle} value={f.price} onChange={(e) => set("price", e.target.value)} placeholder="499" inputMode="decimal" /></Field>
+          <Field label="Discounted price (optional)"><input style={inputStyle} value={f.discount_price ?? ""} onChange={(e) => set("discount_price", e.target.value)} placeholder="e.g. 299" inputMode="decimal" /></Field>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <Field label="Currency"><input style={inputStyle} value={f.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} /></Field>
+          <Field label="Plan type">
+            <select style={inputStyle} value={f.kind} onChange={(e) => set("kind", e.target.value)}>
+              <option value="retail">Retail (storefront / plugin)</option>
+              <option value="wholesale">Wholesale (supplier listings)</option>
+              <option value="both">Both</option>
+            </select>
+          </Field>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <Field label="Billing interval">
@@ -154,29 +195,25 @@ function NewPlanModal({ onClose, onDone }) {
           </Field>
           <Field label="Every N intervals"><input style={inputStyle} value={f.interval_count} onChange={(e) => set("interval_count", e.target.value)} inputMode="numeric" /></Field>
         </div>
-        <Field label="Plan type">
-          <select style={inputStyle} value={f.kind} onChange={(e) => set("kind", e.target.value)}>
-            <option value="retail">Retail (storefront / plugin)</option>
-            <option value="wholesale">Wholesale (supplier listings)</option>
-            <option value="both">Both</option>
-          </select>
-        </Field>
         <Field label="Description">
-          <textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical", fontFamily: "inherit" }} value={f.description}
+          <textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical", fontFamily: "inherit" }} value={f.description}
             onChange={(e) => set("description", e.target.value)} placeholder="Shown under the plan name on the user's plans page." />
         </Field>
         <Field label="Features (one per line — shown as ✓ bullets on the plan card)">
-          <textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical", fontFamily: "inherit" }} value={f.features}
+          <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical", fontFamily: "inherit" }} value={f.features}
             onChange={(e) => set("features", e.target.value)} placeholder={"List up to 100 products\nInventory management\nSales dashboard"} />
         </Field>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#42505f", margin: "10px 0 6px" }}>Features included in this plan</div>
+        {PLAN_FLAGS.map((ff) => (
+          <label key={ff.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#42505f", margin: "2px 0 6px", cursor: "pointer" }}>
+            <input type="checkbox" checked={!!f.flags[ff.key]} onChange={(e) => setFlag(ff.key, e.target.checked)} />
+            {ff.label}
+          </label>
+        ))}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
           <Field label="Max products (blank = unlimited)"><input style={inputStyle} value={f.max_products} onChange={(e) => set("max_products", e.target.value)} inputMode="numeric" placeholder="e.g. 100" /></Field>
           <Field label="Max images / product"><input style={inputStyle} value={f.max_images} onChange={(e) => set("max_images", e.target.value)} inputMode="numeric" placeholder="e.g. 5" /></Field>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#42505f", margin: "2px 0 6px", cursor: "pointer" }}>
-          <input type="checkbox" checked={f.allow_payout_routing} onChange={(e) => set("allow_payout_routing", e.target.checked)} />
-          Allow platform-held payments &amp; wallet payouts (per-vendor payment routing)
-        </label>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#42505f", margin: "2px 0 6px", cursor: "pointer" }}>
           <input type="checkbox" checked={f.show_on_search} onChange={(e) => set("show_on_search", e.target.checked)} />
           Show this plan on the public catalogue-search landing page
@@ -186,7 +223,7 @@ function NewPlanModal({ onClose, onDone }) {
         </Field>
         <Field label="Sort order"><input style={inputStyle} value={f.sort_order} onChange={(e) => set("sort_order", e.target.value)} inputMode="numeric" /></Field>
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <Btn tone="lime" onClick={submit} disabled={busy}>{busy ? "Creating…" : "Create plan"}</Btn>
+          <Btn tone="lime" onClick={submit} disabled={busy}>{busy ? "Saving…" : editing ? "Save changes" : "Create plan"}</Btn>
           <Btn tone="ghost" onClick={onClose}>Cancel</Btn>
         </div>
       </div>

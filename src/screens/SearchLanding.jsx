@@ -425,7 +425,12 @@ function PlanModal({ onClose, signedIn, onAuthed }) {
             // only auto-add the allowance line if the admin didn't already list views
             const base = feats.some((x) => /view/i.test(x)) ? [] : [allowance(p)];
             return (
-              <PlanCard key={p.id} name={p.name} price={Number(p.price) <= 0 ? "Free" : inr(p.price)} sub={Number(p.price) <= 0 ? null : per(p)}
+              <PlanCard key={p.id} name={p.name}
+                price={Number(p.price) <= 0 ? "Free"
+                  : (p.discount_price != null && p.discount_price !== "")
+                    ? <>{inr(p.discount_price)} <span style={{ textDecoration: "line-through", color: "#9aa3b2", fontWeight: 400, fontSize: 12.5 }}>{inr(p.price)}</span></>
+                    : inr(p.price)}
+                sub={Number(p.price) <= 0 ? null : per(p)}
                 perks={[...base, ...feats, p.description]}
                 onChoose={() => choose(p)} chooseLabel={Number(p.price) <= 0 ? "Get free" : `Choose ${p.name}`} />
             );

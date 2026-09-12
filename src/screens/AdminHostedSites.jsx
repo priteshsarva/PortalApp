@@ -5,11 +5,13 @@ import { PageHead, Card, Btn, Badge, Spinner, ErrorNote, Empty, fmtDate, storeUr
 
 export default function AdminHostedSites() {
   const [sites, setSites] = useState(null);
+  const [plans, setPlans] = useState([]);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(null); // id currently acting on
 
   function load() {
     api.adminHostedSites().then((r) => setSites(r.sites || [])).catch(setError);
+    api.adminPlans().then((r) => setPlans((r.plans || []).filter((p) => p.active))).catch(() => {});
   }
   useEffect(load, []);
 
@@ -65,7 +67,7 @@ export default function AdminHostedSites() {
                 )}
               </div>
 
-              <FeesRow site={s} />
+              <FeesRow site={s} plans={plans} />
 
               <div style={{ marginTop: 12, display: "flex", gap: 7, flexWrap: "wrap" }}>
                 {s.status === "pending" && (
@@ -102,17 +104,35 @@ export default function AdminHostedSites() {
 }
 
 // Per-store fee + payment-routing override (admin). Gateway fee blank = platform default.
-function FeesRow({ site }) {
+function FeesRow({ site, plans = [] }) {
   const [fee, setFee] = React.useState(site.gateway_fee_pct ?? "");
   const [pm, setPm] = React.useState(site.payout_mode || "direct");
+  const [plan, setPlan] = React.useState(site.plan_id || "");
   const [msg, setMsg] = React.useState("");
+  const [planMsg, setPlanMsg] = React.useState("");
   async function save() {
     setMsg("saving…");
     try { await api.adminSetSiteFees(site.id, { gateway_fee_pct: fee === "" ? null : Number(fee), payout_mode: pm }); setMsg("✓ saved"); setTimeout(() => setMsg(""), 1500); }
     catch (e) { setMsg(e.message); }
   }
+  async function savePlan(next) {
+    setPlan(next); if (!next) return;
+    setPlanMsg("saving…");
+    try { await api.adminSetShopPlan(site.id, next); setPlanMsg("✓ saved"); setTimeout(() => setPlanMsg(""), 1500); }
+    catch (e) { setPlanMsg(e.message); }
+  }
   return (
+    <>
     <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#6b7688", background: "#f8f9fc", borderRadius: 8, padding: "8px 10px" }}>
+      <span>Plan</span>
+      <select value={plan} onChange={(e) => savePlan(e.target.value)}
+        style={{ border: "1px solid #d4d9e3", borderRadius: 6, padding: "4px 7px", fontSize: 12, maxWidth: 220 }}>
+        <option value="">{site.plan_name ? site.plan_name : "— none —"}</option>
+        {plans.map((p) => <option key={p.id} value={p.id}>{p.name} · ₹{p.price}</option>)}
+      </select>
+      {planMsg && <span style={{ color: planMsg.startsWith("✓") ? "#2c6e2c" : "#b23a48" }}>{planMsg}</span>}
+    </div>
+    <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#6b7688", background: "#f8f9fc", borderRadius: 8, padding: "8px 10px" }}>
       <span>Gateway fee %</span>
       <input value={fee} onChange={(e) => setFee(e.target.value)} placeholder="default" inputMode="decimal"
         style={{ width: 70, border: "1px solid #d4d9e3", borderRadius: 6, padding: "4px 7px", fontSize: 12 }} />
@@ -126,5 +146,6 @@ function FeesRow({ site }) {
       <button onClick={save} style={{ border: "1px solid #16361b", background: "#16361b", color: "#C8FF3D", borderRadius: 6, padding: "4px 12px", fontSize: 12, cursor: "pointer" }}>Save</button>
       {msg && <span style={{ color: msg.startsWith("✓") ? "#2c6e2c" : "#b23a48" }}>{msg}</span>}
     </div>
+    </>
   );
 }

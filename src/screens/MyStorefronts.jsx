@@ -350,7 +350,8 @@ function GoLivePanel({ site, onChanged }) {
   }, [site.id]);
 
   const unpaid = (invoices || []).find((iv) => iv.status !== "paid");
-  const planMoney = (p) => (p.currency === "INR" || !p.currency ? "₹" : p.currency + " ") + (Number(p.price) || 0).toLocaleString("en-IN") + " / " + (p.interval || "month");
+  const planCur = (v, p) => (p.currency === "INR" || !p.currency ? "₹" : p.currency + " ") + (Number(v) || 0).toLocaleString("en-IN");
+  const planMoney = (p) => planCur(p.price, p) + " / " + (p.interval || "month");
   const previewUrl = storeUrl(site.slug);
 
   async function submit() {
@@ -394,7 +395,11 @@ function GoLivePanel({ site, onChanged }) {
                     style={{ textAlign: "left", cursor: locked ? "default" : "pointer", border: on ? "2px solid #C8FF3D" : "1px solid #e6e9f0", borderRadius: 10, padding: "11px 13px", background: "#fff", opacity: locked && !on ? 0.5 : 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                       <span style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</span>
-                      <span style={{ fontWeight: 700, fontSize: 13.5 }}>{planMoney(p)}</span>
+                      <span style={{ fontWeight: 700, fontSize: 13.5 }}>
+                        {p.discount_price != null && p.discount_price !== ""
+                          ? <>{planCur(p.discount_price, p)} <span style={{ textDecoration: "line-through", color: "#9aa3b2", fontWeight: 400 }}>{planCur(p.price, p)}</span> / {p.interval || "month"}</>
+                          : planMoney(p)}
+                      </span>
                     </div>
                     {p.description && <div style={{ fontSize: 12, color: "#6b7688", marginTop: 3 }}>{p.description}</div>}
                     {Array.isArray(p.features) && p.features.length > 0 && (

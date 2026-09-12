@@ -49,6 +49,7 @@ export const api = {
   adminCreatePlan: (body) => req("/portal/admin/plans", { method: "POST", body }),
   adminUpdatePlan: (id, body) => req(`/portal/admin/plans/${id}`, { method: "PATCH", body }),
   adminDeletePlan: (id) => req(`/portal/admin/plans/${id}`, { method: "DELETE" }),
+  adminSetShopPlan: (id, plan_id) => req(`/portal/admin/shops/${id}/plan`, { method: "PATCH", body: { plan_id } }),
   me: () => req("/auth/me"),
 
   // ---- public catalogue-search landing (anon 3 free -> OTP 50 free -> ₹100/mo) ----
