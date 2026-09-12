@@ -126,6 +126,7 @@ export const api = {
   setFulfilmentMode: (siteId, fulfilment_mode) => req(`/portal/hosted-sites/${siteId}/fulfilment-mode`, { method: "PUT", body: { fulfilment_mode } }),
   setOrderFulfilment: (siteId, orderId, fulfilment_mode) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/fulfilment`, { method: "PATCH", body: { fulfilment_mode } }),
   setPayoutMode: (siteId, payout_mode) => req(`/portal/hosted-sites/${siteId}/payout-mode`, { method: "PUT", body: { payout_mode } }),
+  setStoreGateway: (siteId, store_gateway) => req(`/portal/hosted-sites/${siteId}/store-gateway`, { method: "PUT", body: { store_gateway } }),
   adminSetSiteFees: (siteId, body) => req(`/portal/admin/hosted-sites/${siteId}/fees`, { method: "PATCH", body }),
   uploadShipmentPhotos: async (files) => {
     const fd = new FormData();

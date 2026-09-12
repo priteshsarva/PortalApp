@@ -108,12 +108,19 @@ function FeesRow({ site, plans = [] }) {
   const [fee, setFee] = React.useState(site.gateway_fee_pct ?? "");
   const [pm, setPm] = React.useState(site.payout_mode || "direct");
   const [plan, setPlan] = React.useState(site.plan_id || "");
+  const [gw, setGw] = React.useState(site.store_gateway || "pay0");
   const [msg, setMsg] = React.useState("");
   const [planMsg, setPlanMsg] = React.useState("");
+  const [gwMsg, setGwMsg] = React.useState("");
   async function save() {
     setMsg("saving…");
     try { await api.adminSetSiteFees(site.id, { gateway_fee_pct: fee === "" ? null : Number(fee), payout_mode: pm }); setMsg("✓ saved"); setTimeout(() => setMsg(""), 1500); }
     catch (e) { setMsg(e.message); }
+  }
+  async function saveGw(next) {
+    setGw(next); setGwMsg("saving…");
+    try { await api.adminSetSiteFees(site.id, { store_gateway: next }); setGwMsg("✓ saved" + (next === "pay0" ? " (payout → platform)" : "")); setTimeout(() => setGwMsg(""), 2000); if (next === "pay0") setPm("platform"); }
+    catch (e) { setGwMsg(e.message); }
   }
   async function savePlan(next) {
     setPlan(next); if (!next) return;
@@ -131,6 +138,13 @@ function FeesRow({ site, plans = [] }) {
         {plans.map((p) => <option key={p.id} value={p.id}>{p.name} · ₹{p.price}</option>)}
       </select>
       {planMsg && <span style={{ color: planMsg.startsWith("✓") ? "#2c6e2c" : "#b23a48" }}>{planMsg}</span>}
+      <span style={{ marginLeft: 8 }}>Gateway</span>
+      <select value={gw} onChange={(e) => saveGw(e.target.value)}
+        style={{ border: "1px solid #d4d9e3", borderRadius: 6, padding: "4px 7px", fontSize: 12 }}>
+        <option value="pay0">Pay0 (auto)</option>
+        <option value="upi">UPI / WhatsApp</option>
+      </select>
+      {gwMsg && <span style={{ color: gwMsg.startsWith("✓") ? "#2c6e2c" : "#b23a48" }}>{gwMsg}</span>}
     </div>
     <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, color: "#6b7688", background: "#f8f9fc", borderRadius: 8, padding: "8px 10px" }}>
       <span>Gateway fee %</span>

@@ -249,7 +249,7 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
   const steps = [
     { key: "basics", title: "Store basics", required: true, hint: "Name, logo, contact — the essentials.", render: (v) => <SettingsPanel siteId={site.id} section="basics" onValid={v} /> },
     { key: "products", title: "Products", required: true, hint: "Pick which sources feed your storefront.", render: (v) => <ProductsPanel siteId={site.id} onChanged={bumpSrc} onValid={v} /> },
-    { key: "payments", title: "Payments", required: false, hint: "Optional — your UPI for direct checkout.", render: () => <SettingsPanel siteId={site.id} section="payments" /> },
+    { key: "payments", title: "Payments", required: false, hint: "Optional — your UPI for direct checkout.", render: () => <SettingsPanel siteId={site.id} section="payments" site={site} /> },
     { key: "colours", title: "Colours", required: false, hint: "Optional — your brand palette.", render: () => <SettingsPanel siteId={site.id} section="theme" /> },
     { key: "content", title: "Homepage content", required: false, hint: "Optional — hero, announcement, reviews.", render: () => <SettingsPanel siteId={site.id} section="content" /> },
     { key: "navigation", title: "Navigation & front page", required: false, hint: "Optional — curate your menu and home page.", render: () => <NavigationPanel key={srcVer} siteId={site.id} /> },
@@ -1238,7 +1238,32 @@ const SECTION_FIELDS = {
   info: ["address", "social_urls", "policies", "pricing", "analytics"],
 };
 
-function SettingsPanel({ siteId, section, onValid }) {
+// Higher-plan vendors can collect via their own UPI instead of the platform's
+// Pay0 (which takes the 1% fee). Only shown when the plan allows it.
+function OwnGatewayRow({ siteId, current }) {
+  const [gw, setGw] = React.useState(current);
+  const [msg, setMsg] = React.useState("");
+  async function pick(next) {
+    setGw(next); setMsg("saving…");
+    try { await api.setStoreGateway(siteId, next); setMsg(next === "upi" ? "✓ Collecting to your own UPI" : "✓ Using the platform gateway"); setTimeout(() => setMsg(""), 2500); }
+    catch (e) { setMsg(e.message); setGw(current); }
+  }
+  return (
+    <div style={{ marginTop: 12, padding: "10px 12px", background: "#f8fafd", border: "1px solid #e6e9f0", borderRadius: 8 }}>
+      <div style={{ fontWeight: 700, fontSize: 12.5, marginBottom: 6 }}>Payment gateway (your plan)</div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
+        <select style={{ ...inputStyle, maxWidth: 280 }} value={gw} onChange={(e) => pick(e.target.value)}>
+          <option value="pay0">Platform gateway (automatic, 1% fee)</option>
+          <option value="upi">My own UPI (paid directly to me)</option>
+        </select>
+        {msg && <span style={{ color: msg.startsWith("✓") ? "#2e7d32" : "#b23a48" }}>{msg}</span>}
+      </div>
+      <div style={{ fontSize: 11, color: "#8a93a3", marginTop: 6 }}>Pick “My own UPI” to collect straight to the UPI ID above — fill it in first.</div>
+    </div>
+  );
+}
+
+function SettingsPanel({ siteId, section, onValid, site }) {
   const [form, setForm] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -1391,6 +1416,7 @@ function SettingsPanel({ siteId, section, onValid }) {
           </select>
         </Field>
       </div>
+      {site?.allow_own_gateway && <OwnGatewayRow siteId={siteId} current={site.store_gateway || "pay0"} />}
       </>)}
 
       {show("theme") && (<>
