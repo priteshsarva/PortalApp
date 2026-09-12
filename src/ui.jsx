@@ -258,3 +258,19 @@ export function storeUrl(slug) {
   const tmpl = import.meta.env.VITE_STORE_BASE_URL || "http://localhost:5175/?store={slug}";
   return tmpl.replace("{slug}", slug);
 }
+
+// Clipboard copy with a transient top-centre toast. Returns [copy, toast]:
+// call copy(text, "Link copied"); render {toast} once inside the screen.
+export function useCopyToast() {
+  const [msg, setMsg] = React.useState(null);
+  const timer = React.useRef(null);
+  const copy = (text, label = "Copied") => {
+    const show = (m) => { setMsg(m); if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => setMsg(null), 1400); };
+    try { const r = navigator.clipboard.writeText(text); if (r && r.then) r.then(() => show(label)).catch(() => show("Couldn't copy — select it and copy manually")); else show(label); }
+    catch { show("Couldn't copy — select it and copy manually"); }
+  };
+  const toast = msg ? (
+    <div role="status" aria-live="polite" style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 70, background: C.ink, color: "#fff", padding: "9px 16px", borderRadius: 9, fontSize: 13, fontWeight: 600, boxShadow: "0 6px 22px rgba(15,23,38,0.28)" }}>{msg}</div>
+  ) : null;
+  return [copy, toast];
+}

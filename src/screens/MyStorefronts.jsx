@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { ExternalLink, Plus, ArrowLeft, Search, ArrowRight } from "lucide-react";
+import { ExternalLink, Plus, ArrowLeft, Search, ArrowRight, Copy } from "lucide-react";
 import { api } from "../api.js";
 import ShipmentModal from "../components/ShipmentModal.jsx";
-import { C, PageHead, Card, Btn, Badge, Field, inputStyle, Spinner, ErrorNote, Empty, Modal, fmtDate, storeUrl, useIsMobile } from "../ui.jsx";
+import { C, PageHead, Card, Btn, Badge, Field, inputStyle, Spinner, ErrorNote, Empty, Modal, fmtDate, storeUrl, useIsMobile, useCopyToast } from "../ui.jsx";
 import AnalyticsView, { exportAnalyticsCsv } from "../components/AnalyticsView.jsx";
 import OrderDetailView from "./OrderDetailView.jsx";
 
@@ -10,10 +10,9 @@ const ORDER_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancell
 
 // Shareable preview access for a not-yet-live store: the link + password anyone
 // needs to view the preview copy (like a Shopify store password).
-function PreviewAccess({ site }) {
+function PreviewAccess({ site, copy }) {
   if (!site.preview_password) return null;
   const url = storeUrl(site.slug);
-  const copy = (t) => { try { navigator.clipboard.writeText(t); } catch { /* ignore */ } };
   const chip = { display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #d4d9e3", borderRadius: 8, padding: "4px 8px", fontSize: 12.5, fontFamily: "ui-monospace, monospace" };
   return (
     <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #d9dde6", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 12.5, color: "#42505f" }}>
@@ -21,7 +20,10 @@ function PreviewAccess({ site }) {
       <a href={url} target="_blank" rel="noreferrer" style={{ ...chip, color: "#3b6fd8", textDecoration: "none" }} title="Open preview">
         {url} <ExternalLink size={12} />
       </a>
-      <button type="button" onClick={() => copy(site.preview_password)} style={{ ...chip, cursor: "pointer" }} title="Copy password">
+      <button type="button" onClick={() => copy(url, "Link copied")} style={{ ...chip, cursor: "pointer" }} title="Copy link">
+        <Copy size={12} /> Copy link
+      </button>
+      <button type="button" onClick={() => copy(site.preview_password, "Password copied")} style={{ ...chip, cursor: "pointer" }} title="Copy password">
         password: <strong>{site.preview_password}</strong>
       </button>
       <span style={{ color: "#8a93a3" }}>Share these to let anyone view the preview before launch.</span>
@@ -119,10 +121,10 @@ function CreateSiteModal({ onClose, onDone }) {
         When it's ready, hit <strong>Submit for review</strong> and an admin approves it before it goes live.
       </div>
       <Field label="Store name">
-        <input style={inputStyle} value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="Aqua Watch" autoFocus />
+        <input style={inputStyle} value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="Your store name" autoFocus />
       </Field>
       <Field label="Link (optional — auto-generated from the name if left blank)">
-        <input style={inputStyle} value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="aqua-watch" />
+        <input style={inputStyle} value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="your-store-name" />
       </Field>
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <Btn tone="lime" onClick={submit} disabled={busy}>{busy ? "Creating…" : "Create storefront"}</Btn>
@@ -138,6 +140,7 @@ function StoreDetail({ site, onBack, onChanged }) {
   // full single-page editor (what we had) is the default. Toggle either way.
   const [mode, setMode] = useState(site.status === "active" ? "edit" : "wizard");
   const [submitting, setSubmitting] = useState(false);
+  const [copy, toast] = useCopyToast();
   const bumpSrc = () => setSrcVer((v) => v + 1);
 
   async function submitForReview() {
@@ -149,6 +152,7 @@ function StoreDetail({ site, onBack, onChanged }) {
 
   return (
     <div>
+      {toast}
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#6b7688", fontSize: 13, padding: 0, marginBottom: 14 }}>
         <ArrowLeft size={15} /> All storefronts
       </button>
@@ -161,6 +165,9 @@ function StoreDetail({ site, onBack, onChanged }) {
             <a href={storeUrl(site.slug)} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: "#3b6fd8", display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
               {storeUrl(site.slug)} <ExternalLink size={12} />
             </a>
+            <button type="button" onClick={() => copy(storeUrl(site.slug), "Link copied")} title="Copy link" style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: "#6b7688", fontSize: 12 }}>
+              <Copy size={13} />
+            </button>
           </div>
         </div>
         <Btn tone="ghost" small onClick={() => setMode((m) => (m === "wizard" ? "edit" : "wizard"))}>
@@ -175,7 +182,7 @@ function StoreDetail({ site, onBack, onChanged }) {
           </div>
           {/* while paused the public store is down, but the owner can still preview
               (and share) it with the preview password */}
-          <PreviewAccess site={site} />
+          <PreviewAccess site={site} copy={copy} />
         </Card>
       )}
       {site.status === "draft" && (
@@ -189,7 +196,7 @@ function StoreDetail({ site, onBack, onChanged }) {
               {submitting ? "Submitting…" : "Submit for review"}
             </Btn>
           </div>
-          <PreviewAccess site={site} />
+          <PreviewAccess site={site} copy={copy} />
         </Card>
       )}
       {site.status !== "active" && site.status !== "paused" && site.status !== "draft" && (
@@ -198,7 +205,7 @@ function StoreDetail({ site, onBack, onChanged }) {
             This storefront is <strong>{site.status}</strong> — it goes live once an admin approves it and the first payment is made.
             Set up branding and products now so it's ready the moment you pay.
           </div>
-          <PreviewAccess site={site} />
+          <PreviewAccess site={site} copy={copy} />
         </Card>
       )}
 
@@ -1081,9 +1088,13 @@ function HomepagePresetPanel({ site }) {
   }
 
   // storefront URL with a non-persisted ?preset override, for the live preview.
+  // Owner previews carry the preview password so the layout preview auto-unlocks
+  // (public visitors still hit the preview wall).
   const previewUrl = (id) => {
     const base = storeUrl(site.slug);
-    return base + (base.includes("?") ? "&" : "?") + "preset=" + encodeURIComponent(id === "original" ? "original" : id);
+    let u = base + (base.includes("?") ? "&" : "?") + "preset=" + encodeURIComponent(id === "original" ? "original" : id);
+    if (site.preview_password) u += "&preview_pw=" + encodeURIComponent(site.preview_password);
+    return u;
   };
 
   async function apply(id) {
