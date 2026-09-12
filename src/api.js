@@ -235,6 +235,7 @@ export const api = {
   hostedAnalytics: () => req("/portal/hosted-analytics"),
   hostedSiteAnalytics: (id, params) => req(`/portal/hosted-sites/${id}/analytics${params ? `?${new URLSearchParams(params)}` : ""}`),
   catalogue: (params) => req(`/portal/catalogue${params ? `?${new URLSearchParams(params)}` : ""}`),
+  catalogueClick: (body) => req("/portal/catalogue/click", { method: "POST", body }),
   notifications: () => req("/portal/notifications"),
   requestProSetup: (message) => req("/portal/setup-requests", { method: "POST", body: { message } }),
   createHostedSite: (store_name, slug) => req("/portal/hosted-sites", { method: "POST", body: { store_name, slug } }),

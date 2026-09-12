@@ -135,6 +135,7 @@ export default function CatalogueSearch() {
                   {p.catName && <div style={{ fontSize: 11, color: "#6b7688" }}>{p.catName}</div>}
                   {p.sizes.length > 0 && <div style={{ fontSize: 10.5, color: "#6b7688" }}>Sizes: {p.sizes.slice(0, 10).join(", ")}</div>}
                   <a href={p.product_url} target="_blank" rel="noreferrer"
+                    onClick={() => api.catalogueClick({ category: p.category, productId: p.productId, name: p.name, source: p.source_name }).catch(() => {})}
                     style={{ marginTop: "auto", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, color: "#3b6fd8", textDecoration: "none", paddingTop: 6 }}>
                     {p.source_name} <ExternalLink size={12} />
                   </a>
