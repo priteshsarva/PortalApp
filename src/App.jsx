@@ -34,6 +34,7 @@ import AdminWholesalers from "./screens/AdminWholesalers.jsx";
 import Wallet from "./screens/Wallet.jsx";
 import AdminShipments from "./screens/AdminShipments.jsx";
 import AdminWallet from "./screens/AdminWallet.jsx";
+import AdminLogs from "./screens/AdminLogs.jsx";
 import WelcomeTour from "./Tour.jsx";
 
 // Wholesale-seller feature (vendors listing their own products) is parked for now
@@ -71,6 +72,7 @@ const adminNav = [
   ["enrollAdmin", "Plugin sign-ups", ShieldCheck],
   ["email", "Email settings", Mail],
   ["payments", "Payments", CreditCard],
+  ["logs", "Logs", ScrollText],
   ["notifications", "Notifications", Bell],
   // Hidden until built: "announce" (announcements), "audit" (audit-log viewer).
 ];
@@ -163,6 +165,7 @@ export default function App() {
       case "users": return <AdminClients />;
       case "email": return <AdminEmailSettings />;
       case "payments": return <AdminPaymentSettings />;
+      case "logs": return <AdminLogs />;
       case "notifications": return <Notifications />;
       default: return null;
     }

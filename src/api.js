@@ -105,6 +105,7 @@ export const api = {
   adminUpdatePayout: (id, body) => req(`/portal/admin/payouts/${id}`, { method: "PATCH", body }),
   adminSetWalletThreshold: (userId, payout_threshold) => req(`/portal/admin/wallets/${userId}`, { method: "PATCH", body: { payout_threshold } }),
   adminMoneySummary: () => req("/portal/admin/money-summary"),
+  adminLogs: (type) => req(`/portal/admin/logs${type ? `?type=${type}` : ""}`),
   adminPaymentsToVerify: () => req("/portal/admin/payments-to-verify"),
   adminOrdersPendingShipment: () => req("/portal/admin/orders-pending-shipment"),
   adminOrderShipments: (filter) => req(`/portal/admin/order-shipments${filter ? `?filter=${encodeURIComponent(filter)}` : ""}`),
