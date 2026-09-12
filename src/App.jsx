@@ -245,8 +245,36 @@ export default function App() {
           </main>
         </div>
       )}
-      {role === "client" && <ProSetupPopup />}
+      {role === "client" && !user.email && <EmailRequiredPopup onDone={setUser} />}
+      {role === "client" && user.email && <ProSetupPopup />}
       {role === "client" && <WelcomeTour setNav={setNav} />}
+    </div>
+  );
+}
+
+// Every client must have an email on file. Mobile-OTP signups can arrive with
+// none — nag until they add one. Gated on !user.email so it returns every
+// session until resolved (no permanent dismissal).
+function EmailRequiredPopup({ onDone }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function save() {
+    if (!email.trim()) return;
+    setBusy(true); setErr("");
+    try { const r = await api.completeProfile({ email: email.trim() }); onDone(r.user); }
+    catch (e) { setErr(e.message); setBusy(false); }
+  }
+  return (
+    <div style={{ position: "fixed", right: 20, bottom: 20, zIndex: 1001, width: 300, background: "#0E1726", color: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 12px 40px rgba(0,0,0,0.28)", border: `1px solid ${C.lime}` }}>
+      <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 6 }}>Add your email</div>
+      <div style={{ fontSize: 12.5, color: "#c3ccd8", marginBottom: 10 }}>We need an email on your account for order updates, invoices and receipts.</div>
+      {err && <div style={{ fontSize: 12, color: "#ffb3b3", marginBottom: 8 }}>{err}</div>}
+      <input type="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)}
+        style={{ width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 8, border: "1px solid #33405a", background: "#0b111c", color: "#fff", fontSize: 13, marginBottom: 10 }} />
+      <button onClick={save} disabled={busy} style={{ width: "100%", background: C.lime, color: "#0E1726", border: "none", borderRadius: 8, padding: "9px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13.5, opacity: busy ? 0.6 : 1 }}>
+        {busy ? "Saving…" : "Save email"}
+      </button>
     </div>
   );
 }
