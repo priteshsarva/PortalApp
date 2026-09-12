@@ -134,6 +134,20 @@ function CreateSiteModal({ onClose, onDone }) {
   );
 }
 
+// Shown in place of a section the live store's plan doesn't include.
+function PlanLockNote({ title }) {
+  return (
+    <Card style={{ background: "#faf7f0", border: "1px solid #ecdfc4" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "#8a6d2f", fontWeight: 700 }}>
+        🔒 {title} — not in your plan
+      </div>
+      <div style={{ fontSize: 12.5, color: "#9a7f45", marginTop: 4 }}>
+        Upgrade your plan to unlock this. Ask an admin to move you to a plan that includes it.
+      </div>
+    </Card>
+  );
+}
+
 function StoreDetail({ site, onBack, onChanged }) {
   const [srcVer, setSrcVer] = useState(0); // bumped on source change → NavigationPanel refetches its category list
   // New/not-yet-live stores get the step-by-step guided setup; once active the
@@ -142,6 +156,12 @@ function StoreDetail({ site, onBack, onChanged }) {
   const [submitting, setSubmitting] = useState(false);
   const [copy, toast] = useCopyToast();
   const bumpSrc = () => setSrcVer((v) => v + 1);
+  const isLive = site.status === "active";
+  // After a store is live, sections for plan features it doesn't include are
+  // locked. Only lock when the plan actually carries a limits object — a missing
+  // one (legacy/no plan) means "unknown", so we don't hide features.
+  const planLimits = site.plan_limits;
+  const locked = (flag) => isLive && !!flag && !!planLimits && !planLimits[flag];
 
   async function submitForReview() {
     setSubmitting(true);
@@ -160,8 +180,13 @@ function StoreDetail({ site, onBack, onChanged }) {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1b2230" }}>{site.store_name}</h1>
-          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <Badge status={site.status} />
+            {site.plan_name && (
+              <span title="This storefront's plan" style={{ fontSize: 11.5, fontWeight: 700, color: "#1b2230", background: "#eef6ff", border: "1px solid #cfe0fb", borderRadius: 999, padding: "2px 10px" }}>
+                {site.plan_name} plan
+              </span>
+            )}
             <a href={storeUrl(site.slug)} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: "#3b6fd8", display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
               {storeUrl(site.slug)} <ExternalLink size={12} />
             </a>
@@ -171,7 +196,7 @@ function StoreDetail({ site, onBack, onChanged }) {
           </div>
         </div>
         <Btn tone="ghost" small onClick={() => setMode((m) => (m === "wizard" ? "edit" : "wizard"))}>
-          {mode === "wizard" ? "Edit all settings" : "Guided setup"}
+          {mode === "wizard" ? "Edit all settings" : (isLive ? "Customise storefront" : "Guided setup")}
         </Btn>
       </div>
 
@@ -210,10 +235,10 @@ function StoreDetail({ site, onBack, onChanged }) {
       )}
 
       {mode === "wizard" ? (
-        <StoreSetupWizard site={site} srcVer={srcVer} bumpSrc={bumpSrc} onChanged={onChanged} />
+        <StoreSetupWizard site={site} srcVer={srcVer} bumpSrc={bumpSrc} onChanged={onChanged} locked={locked} />
       ) : (
         <>
-          <AnalyticsPanel site={site} />
+          {locked("analytics") ? <PlanLockNote title="Analytics dashboard" /> : <AnalyticsPanel site={site} />}
           <div style={{ height: 18 }} />
           <ProductsPanel siteId={site.id} onChanged={bumpSrc} />
           <div style={{ height: 18 }} />
@@ -223,7 +248,7 @@ function StoreDetail({ site, onBack, onChanged }) {
           <div style={{ height: 18 }} />
           <HomepagePresetPanel site={site} />
           <div style={{ height: 18 }} />
-          <CustomDomainPanel site={site} onChanged={onChanged} />
+          {locked("custom_domain") ? <PlanLockNote title="Custom domain" /> : <CustomDomainPanel site={site} onChanged={onChanged} />}
           <div style={{ height: 18 }} />
           <SettingsPanel siteId={site.id} />
           <div style={{ height: 18 }} />
@@ -241,21 +266,30 @@ function StoreDetail({ site, onBack, onChanged }) {
 // Step-by-step guided setup. Required steps (branding, products) can't be
 // skipped; optional ones can. Payment is last and skippable — but the store only
 // goes live once it's paid.
-function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
+function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged, locked = () => false }) {
   const mobile = useIsMobile();
+  // "Save & continue" must actually save the current panel first. Each panel that
+  // can save registers its save fn here (via registerSave); the nav handler awaits
+  // it before advancing, so a half-typed step (esp. uploaded review images) is
+  // persisted, not dropped. Stable identity → SettingsPanel registers once/mount.
+  const saveRef = React.useRef(null);
+  const registerSave = React.useCallback((fn) => { saveRef.current = fn; }, []);
   // Fewer fields per step: the old giant "Branding" panel is split into basics /
   // payments / colours / homepage-content / store-info slices (SettingsPanel
   // section=…), each saving only its own fields.
   const steps = [
-    { key: "basics", title: "Store basics", required: true, hint: "Name, logo, contact — the essentials.", render: (v) => <SettingsPanel siteId={site.id} section="basics" onValid={v} /> },
+    { key: "basics", title: "Store basics", required: true, hint: "Name, logo, contact — the essentials.", render: (v, reg) => <SettingsPanel siteId={site.id} section="basics" onValid={v} registerSave={reg} /> },
     { key: "products", title: "Products", required: true, hint: "Pick which sources feed your storefront.", render: (v) => <ProductsPanel siteId={site.id} onChanged={bumpSrc} onValid={v} /> },
-    { key: "payments", title: "Payments", required: false, hint: "Optional — your UPI for direct checkout.", render: () => <SettingsPanel siteId={site.id} section="payments" site={site} /> },
-    { key: "colours", title: "Colours", required: false, hint: "Optional — your brand palette.", render: () => <SettingsPanel siteId={site.id} section="theme" /> },
-    { key: "content", title: "Homepage content", required: false, hint: "Optional — hero, announcement, reviews.", render: () => <SettingsPanel siteId={site.id} section="content" /> },
+    { key: "payments", title: "Own payment gateway", required: false, hint: "Optional — your UPI for direct checkout.", render: (v, reg) => <SettingsPanel siteId={site.id} section="payments" site={site} registerSave={reg} /> },
+    { key: "colours", title: "Colours", required: false, hint: "Optional — your brand palette.", render: (v, reg) => <SettingsPanel siteId={site.id} section="theme" registerSave={reg} /> },
+    { key: "content", title: "Homepage content", required: false, hint: "Optional — hero, announcement, reviews.", render: (v, reg) => <SettingsPanel siteId={site.id} section="content" registerSave={reg} /> },
     { key: "navigation", title: "Navigation & front page", required: false, hint: "Optional — curate your menu and home page.", render: () => <NavigationPanel key={srcVer} siteId={site.id} /> },
     { key: "homepage", title: "Homepage layout", required: false, hint: "Optional — pick a ready-made layout.", render: () => <HomepagePresetPanel site={site} /> },
-    { key: "info", title: "Store info & policies", required: false, hint: "Optional — address, socials, policies, pricing.", render: () => <SettingsPanel siteId={site.id} section="info" /> },
-    { key: "domain", title: "Custom domain", required: false, hint: "Optional — use your own domain.", render: () => <CustomDomainPanel site={site} onChanged={onChanged} /> },
+    { key: "storeinfo", title: "Store info", required: false, hint: "Optional — address & social links.", render: (v, reg) => <SettingsPanel siteId={site.id} section="storeinfo" registerSave={reg} /> },
+    { key: "policies", title: "Policies", required: false, hint: "Optional — shipping, returns, privacy, terms.", render: (v, reg) => <SettingsPanel siteId={site.id} section="policies" registerSave={reg} /> },
+    { key: "pricing", title: "Pricing markup", required: false, hint: "Optional — markup bands over cost price.", render: (v, reg) => <SettingsPanel siteId={site.id} section="pricing" registerSave={reg} /> },
+    { key: "analytics", title: "Analytics pixels", required: false, hint: "Optional — GA4 & Meta Pixel IDs.", render: (v, reg) => <SettingsPanel siteId={site.id} section="analytics" registerSave={reg} /> },
+    { key: "domain", title: "Custom domain", required: false, lockFlag: "custom_domain", hint: "Optional — use your own domain.", render: () => <CustomDomainPanel site={site} onChanged={onChanged} /> },
     { key: "golive", title: "Submit & go live", required: false, hint: "Pick a plan, submit for approval, and pay to go live.", render: () => <GoLivePanel site={site} onChanged={onChanged} /> },
   ];
   const [i, setI] = useState(0);
@@ -265,6 +299,36 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
   const [curValid, setCurValid] = useState(true);
   useEffect(() => { setCurValid(!steps[i].required); }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
   const blocked = step.required && !curValid;
+  const stepLocked = locked(step.lockFlag);
+
+  // A step shows ✓ once it's behind us OR it already holds saved data, so jumping
+  // around keeps completed sections ticked (not just the ones before the cursor).
+  const [settings, setSettings] = useState(null);
+  const refreshSettings = () => api.hostedSiteSettings(site.id).then((r) => setSettings(r.settings || {})).catch(() => {});
+  useEffect(() => { refreshSettings(); }, [site.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hasData = (key) => {
+    const s = settings || {};
+    switch (key) {
+      case "basics": return !!(s.store_name && s.logo_url);
+      case "payments": return !!s.upi_id;
+      case "content": return !!(s.announcement || s.hero?.title || s.about || (s.reviews || []).filter((u) => String(u).trim()).length);
+      case "storeinfo": return !!(s.address?.line1 || Object.values(s.social_urls || {}).some(Boolean));
+      case "policies": return !!(s.policies && Object.values(s.policies).some((v) => String(v || "").trim()));
+      case "pricing": return !!(s.pricing && s.pricing.bands && !s.pricing.using_default);
+      case "analytics": return !!(s.analytics?.ga4_id || s.analytics?.meta_pixel_id);
+      case "domain": return !!site.custom_domain;
+      default: return false;
+    }
+  };
+  const done = (j) => j < i || hasData(steps[j].key);
+
+  // Save the current panel (if it registered a save), then advance. On a save
+  // error we stay put so the panel's own error note is seen and nothing is lost.
+  const goNext = async () => {
+    try { if (saveRef.current && (await saveRef.current()) === false) return; } catch { return; }
+    await refreshSettings();
+    setI((n) => n + 1);
+  };
 
   // On the last step we visit the storefront (live if active, else the preview).
   const visitSite = () => window.open(storeUrl(site.slug), "_blank", "noopener");
@@ -277,7 +341,7 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
           <button key={s.key} onClick={() => setI(j)}
             style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer",
               background: j === i ? "#1b2230" : "#eef1f6", color: j === i ? "#fff" : "#42505f", borderRadius: 999, padding: "7px 12px", fontSize: 12.5, fontWeight: j === i ? 700 : 500 }}>
-            <span style={{ width: 18, height: 18, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 10.5, background: j < i ? "#C8FF3D" : j === i ? "#fff" : "#d4d9e3", color: j === i ? "#1b2230" : "#1b2230" }}>{j < i ? "✓" : j + 1}</span>
+            <span style={{ width: 18, height: 18, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 10.5, background: done(j) ? "#C8FF3D" : j === i ? "#fff" : "#d4d9e3", color: "#1b2230" }}>{done(j) && j !== i ? "✓" : j + 1}</span>
             {s.title}
           </button>
         ))}
@@ -289,12 +353,12 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
         </div>
         <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 4 }}>{step.hint}</div>
       </div>
-      {step.render(setCurValid)}
+      <div key={step.key}>{stepLocked ? <PlanLockNote title={step.title} /> : step.render(setCurValid, registerSave)}</div>
       {blocked && <div style={{ fontSize: 12, color: "#b26a00", marginTop: 10 }}>Fill the required fields on this step to continue.</div>}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18, position: "sticky", bottom: 0, background: C.paper, paddingTop: 10, paddingBottom: 6 }}>
         <Btn tone="ghost" disabled={i === 0} onClick={() => setI((n) => Math.max(0, n - 1))}>← Back</Btn>
         <div style={{ flex: 1 }} />
-        {!last && <Btn tone="lime" disabled={blocked} onClick={() => setI((n) => n + 1)}>Next →</Btn>}
+        {!last && <Btn tone="lime" disabled={blocked} onClick={goNext}>Save &amp; continue →</Btn>}
         {last && <Btn tone="lime" onClick={visitSite}>Visit my site ↗</Btn>}
       </div>
     </div>
@@ -312,8 +376,8 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
                 background: j === i ? "#eef6ff" : "transparent", borderRadius: 8, padding: "8px 10px", fontSize: 12.5,
                 color: j === i ? "#1b2230" : "#42505f", fontWeight: j === i ? 700 : 500 }}>
               <span style={{ width: 20, height: 20, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 11,
-                background: j < i ? "#C8FF3D" : j === i ? "#1b2230" : "#e6e9f0", color: j === i ? "#fff" : "#1b2230" }}>
-                {j < i ? "✓" : j + 1}
+                background: done(j) && j !== i ? "#C8FF3D" : j === i ? "#1b2230" : "#e6e9f0", color: j === i ? "#fff" : "#1b2230" }}>
+                {done(j) && j !== i ? "✓" : j + 1}
               </span>
               <span style={{ flex: 1 }}>{s.title}</span>
               {!s.required && <span style={{ fontSize: 10, color: "#9aa3b2" }}>optional</span>}
@@ -332,14 +396,14 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
           <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 4 }}>{step.hint}</div>
         </div>
 
-        {step.render(setCurValid)}
+        <div key={step.key}>{stepLocked ? <PlanLockNote title={step.title} /> : step.render(setCurValid, registerSave)}</div>
         {blocked && <div style={{ fontSize: 12, color: "#b26a00", marginTop: 10 }}>Fill the required fields on this step to continue.</div>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
           <Btn tone="ghost" disabled={i === 0} onClick={() => setI((n) => Math.max(0, n - 1))}>← Back</Btn>
           <div style={{ flex: 1 }} />
           {!step.required && !last && <Btn tone="ghost" onClick={() => setI((n) => n + 1)}>Skip</Btn>}
-          {!last && <Btn tone="lime" disabled={blocked} onClick={() => setI((n) => n + 1)}>Save &amp; continue →</Btn>}
+          {!last && <Btn tone="lime" disabled={blocked} onClick={goNext}>Save &amp; continue →</Btn>}
           {last && <Btn tone="lime" onClick={visitSite}>Visit my storefront ↗</Btn>}
         </div>
       </div>
@@ -1161,9 +1225,12 @@ function HomepagePresetPanel({ site }) {
   return (
     <Card>
       <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Homepage layout</div>
-      <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 14 }}>
+      <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 10 }}>
         Pick a ready-made layout for your storefront's home page — hero, category grid, product rails, testimonials.
         Applies immediately. Your branding (name, logo, hero image) fills in automatically.
+      </div>
+      <div style={{ fontSize: 12.5, color: "#2e6b4f", background: "#eef7f1", border: "1px solid #cfe8da", borderRadius: 8, padding: "8px 12px", marginBottom: 14 }}>
+        💡 Add your products first — the layouts and previews fill with your real products, so you'll see far better results while choosing one.
       </div>
 
       {/* colour source: the vendor's brand palette vs the layout's own default palette */}
@@ -1235,7 +1302,10 @@ const SECTION_FIELDS = {
   payments: ["upi_id", "upi_name", "payment_position"],
   theme: ["theme"],
   content: ["announcement", "hero", "about", "reviews"],
-  info: ["address", "social_urls", "policies", "pricing", "analytics"],
+  storeinfo: ["address", "social_urls"],
+  policies: ["policies"],
+  pricing: ["pricing"],
+  analytics: ["analytics"],
 };
 
 // Higher-plan vendors can collect via their own UPI instead of the platform's
@@ -1263,7 +1333,7 @@ function OwnGatewayRow({ siteId, current }) {
   );
 }
 
-function SettingsPanel({ siteId, section, onValid, site }) {
+function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
   const [form, setForm] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -1271,6 +1341,15 @@ function SettingsPanel({ siteId, section, onValid, site }) {
   const [canUpload, setCanUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const show = (sec) => !section || section === sec;
+  // Let the setup wizard's "Save & continue" trigger this panel's save. Register a
+  // stable wrapper that calls the latest save(); unregister on unmount so a step
+  // with no panel doesn't reuse ours.
+  const saveLatest = React.useRef(() => {});
+  useEffect(() => {
+    if (!registerSave) return;
+    registerSave(() => saveLatest.current());
+    return () => registerSave(null);
+  }, [registerSave]);
 
   useEffect(() => {
     api.hostedSiteSettings(siteId).then((r) => setForm(normalize(r.settings || {}))).catch(setError);
@@ -1325,7 +1404,7 @@ function SettingsPanel({ siteId, section, onValid, site }) {
       },
       address: { line1: "", city: "", state: "", pincode: "", ...(s.address || {}) },
       social_urls: { instagram: "", facebook: "", youtube: "", community: "", ...(s.social_urls || {}) },
-      hero: { title: "", subtitle: "", image_url: "", video_url: "", ...(s.hero || {}) },
+      hero: { title: "", subtitle: "", image_url: "", video_url: "", layout: "", ...(s.hero || {}) },
       policies: { shipping: "", returns: "", privacy: "", terms: "", ...(s.policies || {}) },
       pricing: { bands, using_default: bandsFromServer.length === 0 },
       analytics: { ga4_id: "", meta_pixel_id: "", ...(s.analytics || {}) },
@@ -1367,10 +1446,12 @@ function SettingsPanel({ siteId, section, onValid, site }) {
         ? Object.fromEntries(SECTION_FIELDS[section].map((k) => [k, full[k]]))
         : full;
       await api.saveHostedSiteSettings(siteId, payload); setSaved(true);
+      return true;
     }
-    catch (e) { setError(e); }
+    catch (e) { setError(e); return false; }
     finally { setBusy(false); }
   }
+  saveLatest.current = save; // keep the wizard's registered wrapper calling the latest save
 
   function setBand(i, key, value) {
     setSaved(false);
@@ -1444,7 +1525,7 @@ function SettingsPanel({ siteId, section, onValid, site }) {
       </div>
       </>)}
 
-      {show("info") && (<>
+      {show("storeinfo") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 10px" }}>Address</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Address line"><input style={inputStyle} value={form.address.line1} onChange={(e) => set("address.line1", e.target.value)} /></Field>
@@ -1465,6 +1546,12 @@ function SettingsPanel({ siteId, section, onValid, site }) {
 
       {show("content") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 10px" }}>Homepage</div>
+      <Field label="Hero style">
+        <select style={inputStyle} value={form.hero.layout === "split" ? "split" : "fullbleed"} onChange={(e) => set("hero.layout", e.target.value === "split" ? "split" : "")}>
+          <option value="fullbleed">Full-bleed — big edge-to-edge banner with centred text (default)</option>
+          <option value="split">Split — title &amp; buttons on the left, media framed on the right</option>
+        </select>
+      </Field>
       <Field label="Announcement bar (leave blank to hide)">
         <input style={inputStyle} value={form.announcement} onChange={(e) => set("announcement", e.target.value)} placeholder="Free shipping this week!" />
       </Field>
@@ -1505,13 +1592,15 @@ function SettingsPanel({ siteId, section, onValid, site }) {
       </Field>
       </>)}
 
-      {show("info") && (<>
+      {show("policies") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 10px" }}>Policies</div>
       <Field label="Shipping policy"><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={form.policies.shipping} onChange={(e) => set("policies.shipping", e.target.value)} /></Field>
       <Field label="Returns policy"><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={form.policies.returns} onChange={(e) => set("policies.returns", e.target.value)} /></Field>
       <Field label="Privacy policy"><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={form.policies.privacy} onChange={(e) => set("policies.privacy", e.target.value)} /></Field>
       <Field label="Terms of service"><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={form.policies.terms} onChange={(e) => set("policies.terms", e.target.value)} /></Field>
+      </>)}
 
+      {show("pricing") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>Pricing markup</div>
       <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>
         The scraped cost price is marked up by a flat amount per price band. Blank max = no upper limit.
@@ -1534,7 +1623,9 @@ function SettingsPanel({ siteId, section, onValid, site }) {
           Reset to platform default
         </button>
       </div>
+      </>)}
 
+      {show("analytics") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 10px" }}>Analytics pixels</div>
       <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>
         Injected into every storefront page for logged-out and logged-in visitors. Leave blank to skip.
