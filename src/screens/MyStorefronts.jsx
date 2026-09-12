@@ -243,17 +243,28 @@ function StoreDetail({ site, onBack, onChanged }) {
 // goes live once it's paid.
 function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
   const mobile = useIsMobile();
+  // Fewer fields per step: the old giant "Branding" panel is split into basics /
+  // payments / colours / homepage-content / store-info slices (SettingsPanel
+  // section=…), each saving only its own fields.
   const steps = [
-    { key: "branding", title: "Branding", required: true, hint: "Name, logo, colours, contact — the essentials.", render: () => <SettingsPanel siteId={site.id} /> },
-    { key: "products", title: "Products", required: true, hint: "Pick which sources feed your storefront.", render: () => <ProductsPanel siteId={site.id} onChanged={bumpSrc} /> },
+    { key: "basics", title: "Store basics", required: true, hint: "Name, logo, contact — the essentials.", render: (v) => <SettingsPanel siteId={site.id} section="basics" onValid={v} /> },
+    { key: "products", title: "Products", required: true, hint: "Pick which sources feed your storefront.", render: (v) => <ProductsPanel siteId={site.id} onChanged={bumpSrc} onValid={v} /> },
+    { key: "payments", title: "Payments", required: false, hint: "Optional — your UPI for direct checkout.", render: () => <SettingsPanel siteId={site.id} section="payments" /> },
+    { key: "colours", title: "Colours", required: false, hint: "Optional — your brand palette.", render: () => <SettingsPanel siteId={site.id} section="theme" /> },
+    { key: "content", title: "Homepage content", required: false, hint: "Optional — hero, announcement, reviews.", render: () => <SettingsPanel siteId={site.id} section="content" /> },
     { key: "navigation", title: "Navigation & front page", required: false, hint: "Optional — curate your menu and home page.", render: () => <NavigationPanel key={srcVer} siteId={site.id} /> },
     { key: "homepage", title: "Homepage layout", required: false, hint: "Optional — pick a ready-made layout.", render: () => <HomepagePresetPanel site={site} /> },
+    { key: "info", title: "Store info & policies", required: false, hint: "Optional — address, socials, policies, pricing.", render: () => <SettingsPanel siteId={site.id} section="info" /> },
     { key: "domain", title: "Custom domain", required: false, hint: "Optional — use your own domain.", render: () => <CustomDomainPanel site={site} onChanged={onChanged} /> },
     { key: "golive", title: "Submit & go live", required: false, hint: "Pick a plan, submit for approval, and pay to go live.", render: () => <GoLivePanel site={site} onChanged={onChanged} /> },
   ];
   const [i, setI] = useState(0);
   const step = steps[i];
   const last = i === steps.length - 1;
+  // Per-step validation: required steps can't advance until valid.
+  const [curValid, setCurValid] = useState(true);
+  useEffect(() => { setCurValid(!steps[i].required); }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
+  const blocked = step.required && !curValid;
 
   // On the last step we visit the storefront (live if active, else the preview).
   const visitSite = () => window.open(storeUrl(site.slug), "_blank", "noopener");
@@ -278,11 +289,12 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
         </div>
         <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 4 }}>{step.hint}</div>
       </div>
-      {step.render()}
+      {step.render(setCurValid)}
+      {blocked && <div style={{ fontSize: 12, color: "#b26a00", marginTop: 10 }}>Fill the required fields on this step to continue.</div>}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18, position: "sticky", bottom: 0, background: C.paper, paddingTop: 10, paddingBottom: 6 }}>
         <Btn tone="ghost" disabled={i === 0} onClick={() => setI((n) => Math.max(0, n - 1))}>← Back</Btn>
         <div style={{ flex: 1 }} />
-        {!last && <Btn tone="lime" onClick={() => setI((n) => n + 1)}>Next →</Btn>}
+        {!last && <Btn tone="lime" disabled={blocked} onClick={() => setI((n) => n + 1)}>Next →</Btn>}
         {last && <Btn tone="lime" onClick={visitSite}>Visit my site ↗</Btn>}
       </div>
     </div>
@@ -320,13 +332,14 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged }) {
           <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 4 }}>{step.hint}</div>
         </div>
 
-        {step.render()}
+        {step.render(setCurValid)}
+        {blocked && <div style={{ fontSize: 12, color: "#b26a00", marginTop: 10 }}>Fill the required fields on this step to continue.</div>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18 }}>
           <Btn tone="ghost" disabled={i === 0} onClick={() => setI((n) => Math.max(0, n - 1))}>← Back</Btn>
           <div style={{ flex: 1 }} />
           {!step.required && !last && <Btn tone="ghost" onClick={() => setI((n) => n + 1)}>Skip</Btn>}
-          {!last && <Btn tone="lime" onClick={() => setI((n) => n + 1)}>Save &amp; continue →</Btn>}
+          {!last && <Btn tone="lime" disabled={blocked} onClick={() => setI((n) => n + 1)}>Save &amp; continue →</Btn>}
           {last && <Btn tone="lime" onClick={visitSite}>Visit my storefront ↗</Btn>}
         </div>
       </div>
@@ -498,7 +511,7 @@ function PaymentPanel({ site }) {
 
 // Which product sources feed this storefront. The vendor picks from the active
 // source catalogue; the storefront then shows only those sources' products.
-function ProductsPanel({ siteId, onChanged }) {
+function ProductsPanel({ siteId, onChanged, onValid }) {
   const [data, setData] = useState(null); // { available, attached, categories }
   const [sel, setSel] = useState(null);   // Set of selected source ids
   const [q, setQ] = useState("");
@@ -511,6 +524,9 @@ function ProductsPanel({ siteId, onChanged }) {
       .then((r) => { setData(r); setSel(new Set(r.attached)); })
       .catch(setError);
   }, [siteId]);
+
+  // A store needs at least one product source to be worth launching.
+  useEffect(() => { if (onValid) onValid(!!(sel && sel.size > 0)); }, [sel, onValid]);
 
   function toggle(id) {
     setSaved(false);
@@ -991,7 +1007,9 @@ function CustomDomainPanel({ site, onChanged }) {
   const [verifying, setVerifying] = useState(false);
   const [msg, setMsg] = useState(null);
   const [verify, setVerify] = useState(null); // { txt_name, txt_value, ... } from the save response
+  const [dnsRecs, setDnsRecs] = useState(site.dns_records || null);
   const [error, setError] = useState(null);
+  const [copy, toast] = useCopyToast();
   const verified = !!site.custom_domain_verified_at;
 
   async function save() {
@@ -999,7 +1017,8 @@ function CustomDomainPanel({ site, onChanged }) {
     try {
       const r = await api.setHostedSiteCustomDomain(site.id, domain.trim());
       setVerify(r.verify || null);
-      setMsg(domain.trim() ? "Domain saved. Add ONE of the records below, then click Verify." : "Domain cleared.");
+      setDnsRecs(r.dns_records || null);
+      setMsg(domain.trim() ? "Domain saved. Add the DNS records below at your registrar, then click Verify." : "Domain cleared.");
       onChanged();
     } catch (e) { setError(e); }
     finally { setBusy(false); }
@@ -1015,8 +1034,10 @@ function CustomDomainPanel({ site, onChanged }) {
     finally { setVerifying(false); }
   }
 
+  const recs = dnsRecs || site.dns_records || null;
   return (
     <Card>
+      {toast}
       <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Custom domain</div>
       <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>
         Point your own domain (like <code style={{ background: "#f5f6f9", padding: "1px 6px", borderRadius: 4 }}>yourbrand.com</code>) at your storefront instead of the platform subdomain.
@@ -1040,19 +1061,29 @@ function CustomDomainPanel({ site, onChanged }) {
             <div style={{ color: "#8a6d2f" }}>
               <div style={{ marginBottom: 8 }}>⏳ <strong>{site.custom_domain}</strong> is not verified yet.</div>
               <div style={{ fontSize: 12, color: "#42505f", marginBottom: 8 }}>
-                <strong>Step 1 — prove you own the domain.</strong> Add EITHER of these at your DNS/registrar:
-                {verify ? (
-                  <div style={{ marginTop: 6 }}>
-                    <div style={{ marginBottom: 4 }}>• <strong>TXT record</strong> — name <code style={mono}>{verify.txt_name}</code>, value <code style={mono}>{verify.txt_value}</code></div>
-                    <div>• <strong>or a file</strong> at <code style={mono}>{verify.wellknown_url}</code> containing <code style={mono}>{verify.wellknown_value}</code></div>
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 4, color: "#6b7688" }}>Re-save the domain above to (re)issue the verification token.</div>
-                )}
+                Add these records at your domain's DNS / registrar, then click Verify. DNS changes can take a few minutes to a few hours.
               </div>
-              <div style={{ fontSize: 12, color: "#42505f", marginBottom: 10 }}>
-                <strong>Step 2 — point the domain at us.</strong> Add a <code style={mono}>CNAME</code> for <code>@</code>/<code>www</code> to the platform host you were given.
-              </div>
+              {recs ? (
+                <div style={{ overflowX: "auto", marginBottom: 10 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "#fff", borderRadius: 8, overflow: "hidden" }}>
+                    <thead><tr style={{ background: "#f4f6fa", color: "#6b7688", textAlign: "left" }}>
+                      <th style={{ padding: "6px 8px" }}>Type</th><th style={{ padding: "6px 8px" }}>Host / Name</th><th style={{ padding: "6px 8px" }}>Value</th><th style={{ padding: "6px 8px" }}></th>
+                    </tr></thead>
+                    <tbody>
+                      {recs.map((rec, k) => (
+                        <tr key={k} style={{ borderTop: "1px solid #eef1f6" }}>
+                          <td style={{ padding: "6px 8px", fontWeight: 700 }}>{rec.type}</td>
+                          <td style={{ padding: "6px 8px" }}><code style={mono}>{rec.host}</code></td>
+                          <td style={{ padding: "6px 8px" }}><code style={mono}>{rec.value}</code><div style={{ color: "#9aa3b2", fontSize: 11, marginTop: 2 }}>{rec.note}</div></td>
+                          <td style={{ padding: "6px 8px" }}><button type="button" onClick={() => copy(rec.value, `${rec.type} copied`)} style={{ border: "1px solid #d4d9e3", background: "#fff", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer" }}>Copy</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ marginTop: 4, marginBottom: 10, color: "#6b7688", fontSize: 12 }}>Re-save the domain above to (re)issue the DNS records.</div>
+              )}
               <Btn small tone="lime" disabled={verifying} onClick={verifyNow}>{verifying ? "Checking…" : "Verify now"}</Btn>
             </div>
           )}
@@ -1196,15 +1227,48 @@ function HomepagePresetPanel({ site }) {
   );
 }
 
-function SettingsPanel({ siteId }) {
+// Which top-level settings keys each wizard sub-step owns. Undefined section =
+// the full single-page editor ("Edit all settings"). The settings PUT merges,
+// so each sub-step safely saves only its own slice.
+const SECTION_FIELDS = {
+  basics: ["store_name", "logo_url", "favicon_url", "whatsapp", "email", "phone"],
+  payments: ["upi_id", "upi_name", "payment_position"],
+  theme: ["theme"],
+  content: ["announcement", "hero", "about", "reviews"],
+  info: ["address", "social_urls", "policies", "pricing", "analytics"],
+};
+
+function SettingsPanel({ siteId, section, onValid }) {
   const [form, setForm] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [canUpload, setCanUpload] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const show = (sec) => !section || section === sec;
 
   useEffect(() => {
     api.hostedSiteSettings(siteId).then((r) => setForm(normalize(r.settings || {}))).catch(setError);
   }, [siteId]);
+  useEffect(() => { api.uploadStatus().then((r) => setCanUpload(!!r.configured)).catch(() => setCanUpload(false)); }, []);
+
+  async function onPickReviewFiles(e) {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    setUploading(true); setError(null);
+    try {
+      const r = await api.uploadWholesaleImages(files);
+      set("reviews", [...(form.reviews || []).filter((u) => String(u).trim()), ...(r.urls || [])]);
+    } catch (err) { setError(err); }
+    finally { setUploading(false); e.target.value = ""; }
+  }
+
+  // Report validity of the "basics" step (store name is the one hard requirement).
+  useEffect(() => {
+    if (!onValid) return;
+    if (section === "basics") onValid(!!(form && form.store_name && form.store_name.trim()));
+    else onValid(true);
+  }, [form, section, onValid]);
 
   function normalize(s) {
     // pricing.bands is an array; give the form a stable shape (4 rows) it can bind to
@@ -1264,7 +1328,7 @@ function SettingsPanel({ siteId }) {
       // shape pricing: `{ using_default: true }` = an empty bands array on the
       // server → fall back to the platform default markup. `false` = save the
       // vendor's edited bands.
-      const payload = {
+      const full = {
         ...form,
         reviews: (form.reviews || []).map((s) => String(s).trim()).filter(Boolean),
         pricing: form.pricing.using_default ? {} : { bands: form.pricing.bands.map((b) => ({
@@ -1273,6 +1337,10 @@ function SettingsPanel({ siteId }) {
           add: Number(b.add) || 0,
         })) },
       };
+      // Only send this step's fields (the PUT merges); full editor sends everything.
+      const payload = section && SECTION_FIELDS[section]
+        ? Object.fromEntries(SECTION_FIELDS[section].map((k) => [k, full[k]]))
+        : full;
       await api.saveHostedSiteSettings(siteId, payload); setSaved(true);
     }
     catch (e) { setError(e); }
@@ -1292,9 +1360,10 @@ function SettingsPanel({ siteId }) {
 
   return (
     <Card>
+      {show("basics") && (<>
       <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Branding</div>
       <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 16 }}>
-        Shown everywhere on your storefront — the logo, name, colours, contact details and checkout number are yours alone.
+        Shown everywhere on your storefront — the logo, name, contact details and checkout number are yours alone.
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -1305,7 +1374,9 @@ function SettingsPanel({ siteId }) {
         <Field label="Contact email"><input style={inputStyle} value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
         <Field label="Contact phone"><input style={inputStyle} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
       </div>
+      </>)}
 
+      {show("payments") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>UPI payments</div>
       <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>
         Your own UPI ID — any app works (PhonePe, Google Pay, Paytm). At checkout, buyers see a QR + “Pay in UPI app” button that pays you directly, then send you the payment screenshot on WhatsApp to confirm. Leave blank to keep WhatsApp-only checkout.
@@ -1320,7 +1391,9 @@ function SettingsPanel({ siteId }) {
           </select>
         </Field>
       </div>
+      </>)}
 
+      {show("theme") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>Colour palette</div>
       <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>
         Four brand colours. Text on any coloured element is auto-set to black or white for readability.
@@ -1343,7 +1416,9 @@ function SettingsPanel({ siteId }) {
           );
         })}
       </div>
+      </>)}
 
+      {show("info") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 10px" }}>Address</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Address line"><input style={inputStyle} value={form.address.line1} onChange={(e) => set("address.line1", e.target.value)} /></Field>
@@ -1360,7 +1435,9 @@ function SettingsPanel({ siteId }) {
         <Field label="YouTube URL"><input style={inputStyle} value={form.social_urls.youtube} onChange={(e) => set("social_urls.youtube", e.target.value)} placeholder="https://youtube.com/…" /></Field>
         <Field label="WhatsApp community / group link"><input style={inputStyle} value={form.social_urls.community} onChange={(e) => set("social_urls.community", e.target.value)} placeholder="https://chat.whatsapp.com/…" /></Field>
       </div>
+      </>)}
 
+      {show("content") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 10px" }}>Homepage</div>
       <Field label="Announcement bar (leave blank to hide)">
         <input style={inputStyle} value={form.announcement} onChange={(e) => set("announcement", e.target.value)} placeholder="Free shipping this week!" />
@@ -1375,15 +1452,34 @@ function SettingsPanel({ siteId }) {
       <Field label="Hero subtitle"><input style={inputStyle} value={form.hero.subtitle} onChange={(e) => set("hero.subtitle", e.target.value)} /></Field>
       <Field label="About"><textarea style={{ ...inputStyle, minHeight: 70, resize: "vertical" }} value={form.about} onChange={(e) => set("about", e.target.value)} /></Field>
 
-      <Field label="Customer review images (one image URL per line — shown in an auto-sliding strip on your home page)">
+      <Field label="Customer review images (shown in an auto-sliding strip on your home page)">
+        {canUpload && (
+          <label style={{ display: "block", border: "1.5px dashed #c4ccd8", borderRadius: 8, padding: "10px 12px", textAlign: "center", fontSize: 12.5, color: "#3b6fd8", cursor: "pointer", marginBottom: 8, background: "#f8fafd" }}>
+            {uploading ? "Uploading…" : "⬆ Upload review images"}
+            <input type="file" accept="image/*" multiple hidden onChange={onPickReviewFiles} disabled={uploading} />
+          </label>
+        )}
+        {(form.reviews || []).filter((u) => String(u).trim()).length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+            {(form.reviews || []).filter((u) => String(u).trim()).map((u, i) => (
+              <div key={i} style={{ position: "relative" }}>
+                <img src={u} alt="" style={{ width: 54, height: 54, objectFit: "cover", borderRadius: 6, border: "1px solid #e6e9f0" }} />
+                <button type="button" onClick={() => set("reviews", (form.reviews || []).filter((x) => x !== u))}
+                  title="Remove" style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 999, border: "none", background: "#1b2230", color: "#fff", fontSize: 11, cursor: "pointer", lineHeight: 1 }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
         <textarea
-          style={{ ...inputStyle, minHeight: 84, resize: "vertical" }}
+          style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
           value={(form.reviews || []).join("\n")}
           onChange={(e) => set("reviews", e.target.value.split("\n"))}
-          placeholder={"https://…/review1.jpg\nhttps://…/review2.jpg"}
+          placeholder={canUpload ? "Or paste image URLs, one per line" : "https://…/review1.jpg\nhttps://…/review2.jpg"}
         />
       </Field>
+      </>)}
 
+      {show("info") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 10px" }}>Policies</div>
       <Field label="Shipping policy"><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={form.policies.shipping} onChange={(e) => set("policies.shipping", e.target.value)} /></Field>
       <Field label="Returns policy"><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={form.policies.returns} onChange={(e) => set("policies.returns", e.target.value)} /></Field>
@@ -1421,10 +1517,11 @@ function SettingsPanel({ siteId }) {
         <Field label="Google Analytics 4 ID"><input style={inputStyle} value={form.analytics.ga4_id} onChange={(e) => set("analytics.ga4_id", e.target.value)} placeholder="G-XXXXXXXXXX" /></Field>
         <Field label="Meta Pixel ID"><input style={inputStyle} value={form.analytics.meta_pixel_id} onChange={(e) => set("analytics.meta_pixel_id", e.target.value)} placeholder="1234567890" /></Field>
       </div>
+      </>)}
 
       <ErrorNote error={error} />
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-        <Btn tone="lime" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save branding"}</Btn>
+        <Btn tone="lime" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</Btn>
         {saved && <span style={{ fontSize: 12.5, color: "#2e7d32" }}>Saved ✓ — live on your storefront now</span>}
       </div>
     </Card>
