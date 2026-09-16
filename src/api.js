@@ -214,6 +214,10 @@ export const api = {
     req("/portal/admin/sources/categories/refresh-all", { method: "POST" }),
   adminSetSourceStatus: (id, status) =>
     req(`/portal/admin/sources/${id}`, { method: "PATCH", body: { status } }),
+  adminUpdateSource: (id, patch) =>
+    req(`/portal/admin/sources/${id}`, { method: "PATCH", body: patch }),
+  adminDeleteSource: (id) =>
+    req(`/portal/admin/sources/${id}`, { method: "DELETE" }),
 
   // ---- admin: enrollment + scrape-request queues ----
   adminEnrollments: (status) => req(`/portal/admin/enrollments${status ? `?status=${status}` : ""}`),

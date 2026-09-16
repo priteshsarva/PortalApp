@@ -8,7 +8,8 @@ export default function AdminSources() {
   const [error, setError] = useState(null);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
-  const [active, setActive] = useState(null); // source being inspected
+  const [active, setActive] = useState(null); // source being inspected (categories)
+  const [editing, setEditing] = useState(null); // source being edited
   const [refreshingAll, setRefreshingAll] = useState(false);
 
   useEffect(() => {
@@ -38,6 +39,19 @@ export default function AdminSources() {
       await api.adminSetSourceStatus(s.id, status);
       setSources((list) => list.map((x) => (x.id === s.id ? { ...x, status } : x)));
     } catch (e) { alert(e.message); }
+  }
+
+  async function remove(s) {
+    if (!window.confirm(`Delete ${s.name || s.id}? This removes it from the registry. Scraped products already synced to stores are untouched.`)) return;
+    try {
+      await api.adminDeleteSource(s.id);
+      setSources((list) => list.filter((x) => x.id !== s.id));
+    } catch (e) { alert(e.message); }
+  }
+
+  function onSaved(updated) {
+    setSources((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
+    setEditing(null);
   }
 
   async function refreshAll() {
@@ -95,9 +109,11 @@ export default function AdminSources() {
                   <td style={td}><Badge status={s.status} /></td>
                   <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                     <Btn small tone="ghost" onClick={() => setActive(s)}>Categories</Btn>{" "}
+                    <Btn small tone="ghost" onClick={() => setEditing(s)}>Edit</Btn>{" "}
                     {s.status === "active"
                       ? <Btn small tone="ghost" onClick={() => setStatus(s, "paused")}>Pause</Btn>
-                      : <Btn small tone="lime" onClick={() => setStatus(s, "active")}>Activate</Btn>}
+                      : <Btn small tone="lime" onClick={() => setStatus(s, "active")}>Activate</Btn>}{" "}
+                    <Btn small tone="ghost" onClick={() => remove(s)}>Delete</Btn>
                   </td>
                 </tr>
               ))}
@@ -108,9 +124,65 @@ export default function AdminSources() {
       )}
 
       {active && <CategoriesModal source={active} onClose={() => setActive(null)} />}
+      {editing && <EditSourceModal source={editing} onClose={() => setEditing(null)} onSaved={onSaved} />}
     </div>
   );
 }
+
+// Edit a source's config. id is the primary key (referenced by stores) so it's
+// read-only; everything else the admin can change. Category is slugged server-side.
+function EditSourceModal({ source, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    name: source.name || "",
+    category: source.category || "",
+    method: source.method || "METHOD_A",
+    base_url: source.base_url || "",
+    search_key: source.search_key || "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function save() {
+    setBusy(true); setError(null);
+    try {
+      const r = await api.adminUpdateSource(source.id, form);
+      onSaved(r.source || { id: source.id, ...form });
+    } catch (e) { setError(e); setBusy(false); }
+  }
+
+  return (
+    <Modal title={`Edit ${source.name || source.id}`} onClose={onClose}>
+      <ErrorNote error={error} />
+      <div style={{ fontSize: 11.5, color: "#9aa3b2", marginBottom: 12 }}>Source id <code>{source.id}</code> can't be changed — stores reference it.</div>
+      <label style={lbl}>Name
+        <input style={inputStyle} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Display name" />
+      </label>
+      <label style={lbl}>Category
+        <input style={inputStyle} value={form.category} onChange={(e) => set("category", e.target.value)} placeholder="e.g. watches" />
+      </label>
+      <label style={lbl}>Method
+        <select style={inputStyle} value={form.method} onChange={(e) => set("method", e.target.value)}>
+          <option value="METHOD_A">METHOD_A</option>
+          <option value="METHOD_B">METHOD_B</option>
+          <option value="MANUAL">MANUAL (not auto-scraped)</option>
+        </select>
+      </label>
+      <label style={lbl}>Base URL
+        <input style={inputStyle} value={form.base_url} onChange={(e) => set("base_url", e.target.value)} placeholder="https://…" />
+      </label>
+      <label style={lbl}>Search key
+        <input style={inputStyle} value={form.search_key} onChange={(e) => set("search_key", e.target.value)} placeholder="productFetchedFrom LIKE value" />
+      </label>
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        <Btn tone="lime" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Btn>
+        <Btn tone="ghost" onClick={onClose}>Cancel</Btn>
+      </div>
+    </Modal>
+  );
+}
+
+const lbl = { display: "block", fontSize: 12, fontWeight: 600, color: "#42505f", marginBottom: 12 };
 
 function CategoriesModal({ source, onClose }) {
   const [cats, setCats] = useState(null);
