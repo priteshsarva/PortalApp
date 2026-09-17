@@ -1,0 +1,17 @@
+# Cloudflare Worker (static assets) config for the SPP portal SPA.
+# Serves the built Vite app from ./dist at portal.thekartify.com. This route is
+# more specific than the store's `*.thekartify.com`, so it wins for the portal.
+#
+# Build env vars (VITE_API_URL, VITE_STORE_BASE_URL) are set in the Cloudflare
+# dashboard (Workers > this project > Settings > Variables), inlined at build.
+name = "authntic-portal"
+compatibility_date = "2025-09-16"
+
+[assets]
+directory = "./dist"
+# SPA client-side routing: serve index.html (200) for any unmatched path.
+not_found_handling = "single-page-application"
+
+routes = [
+  { pattern = "portal.thekartify.com/*", zone_name = "thekartify.com" },
+]
