@@ -1,9 +1,18 @@
 # Netlify build config for the SPP portal SPA. Env vars (VITE_API_URL,
 # VITE_STORE_BASE_URL) are set in the Netlify UI, not here — they're inlined at
-# build time. SPA routing is handled by public/_redirects.
+# build time.
 [build]
   command = "npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
+
+# SPA fallback — kept here (not in public/_redirects) so it applies on Netlify
+# but is NOT shipped to Cloudflare Workers Assets, which rejects the /index.html
+# rule as a loop and does its own SPA fallback via wrangler.toml
+# (not_found_handling = "single-page-application").
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
