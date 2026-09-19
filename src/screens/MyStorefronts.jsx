@@ -1070,19 +1070,21 @@ function CustomDomainPanel({ site, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [msg, setMsg] = useState(null);
-  const [verify, setVerify] = useState(null); // { txt_name, txt_value, ... } from the save response
+  const [status, setStatus] = useState(null); // { hostname, ssl } live from Cloudflare
   const [dnsRecs, setDnsRecs] = useState(site.dns_records || null);
   const [error, setError] = useState(null);
   const [copy, toast] = useCopyToast();
   const verified = !!site.custom_domain_verified_at;
 
   async function save() {
-    setBusy(true); setError(null); setMsg(null); setVerify(null);
+    setBusy(true); setError(null); setMsg(null); setStatus(null);
     try {
       const r = await api.setHostedSiteCustomDomain(site.id, domain.trim());
-      setVerify(r.verify || null);
       setDnsRecs(r.dns_records || null);
-      setMsg(domain.trim() ? "Domain saved. Add the DNS records below at your registrar, then click Verify." : "Domain cleared.");
+      setStatus(r.status || null);
+      setMsg(domain.trim()
+        ? "Domain saved. Add the DNS records below at your registrar — the SSL certificate is issued automatically, usually within a few minutes. Then click Check status."
+        : "Domain cleared.");
       onChanged();
     } catch (e) { setError(e); }
     finally { setBusy(false); }
@@ -1092,8 +1094,12 @@ function CustomDomainPanel({ site, onChanged }) {
     setVerifying(true); setError(null); setMsg(null);
     try {
       const r = await api.verifyHostedSiteDomain(site.id);
-      setMsg("✓ Verified — " + (r.note || "your domain is live."));
-      onChanged();
+      if (r.verified) { setMsg("✓ " + (r.note || "Your domain is live.")); onChanged(); }
+      else {
+        setMsg("⏳ " + (r.note || "Not live yet — add the DNS records and give it a few minutes."));
+        if (r.dns_records) setDnsRecs(r.dns_records);
+        if (r.status) setStatus(r.status);
+      }
     } catch (e) { setError(e); }
     finally { setVerifying(false); }
   }
@@ -1104,7 +1110,7 @@ function CustomDomainPanel({ site, onChanged }) {
       {toast}
       <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Custom domain</div>
       <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>
-        Point your own domain (like <code style={{ background: "#f5f6f9", padding: "1px 6px", borderRadius: 4 }}>yourbrand.com</code>) at your storefront instead of the platform subdomain.
+        Point your own domain (like <code style={{ background: "#f5f6f9", padding: "1px 6px", borderRadius: 4 }}>yourbrand.com</code>) at your storefront instead of the platform subdomain. Just add a couple of DNS records — no nameserver change — and HTTPS is set up for you automatically.
       </div>
       <ErrorNote error={error} />
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -1125,8 +1131,13 @@ function CustomDomainPanel({ site, onChanged }) {
             <div style={{ color: "#8a6d2f" }}>
               <div style={{ marginBottom: 8 }}>⏳ <strong>{site.custom_domain}</strong> is not verified yet.</div>
               <div style={{ fontSize: 12, color: "#42505f", marginBottom: 8 }}>
-                Add these records at your domain's DNS / registrar, then click Verify. DNS changes can take a few minutes to a few hours.
+                Add these records at your domain's DNS / registrar. HTTPS is set up automatically once they're detected — usually a few minutes, sometimes up to a few hours. Then click Check status.
               </div>
+              {status && (
+                <div style={{ fontSize: 12, color: "#8a6d2f", marginBottom: 8 }}>
+                  Domain: <strong>{status.hostname}</strong> · Certificate: <strong>{status.ssl}</strong>
+                </div>
+              )}
               {recs ? (
                 <div style={{ overflowX: "auto", marginBottom: 10 }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "#fff", borderRadius: 8, overflow: "hidden" }}>
@@ -1148,7 +1159,7 @@ function CustomDomainPanel({ site, onChanged }) {
               ) : (
                 <div style={{ marginTop: 4, marginBottom: 10, color: "#6b7688", fontSize: 12 }}>Re-save the domain above to (re)issue the DNS records.</div>
               )}
-              <Btn small tone="lime" disabled={verifying} onClick={verifyNow}>{verifying ? "Checking…" : "Verify now"}</Btn>
+              <Btn small tone="lime" disabled={verifying} onClick={verifyNow}>{verifying ? "Checking…" : "Check status"}</Btn>
             </div>
           )}
         </div>
