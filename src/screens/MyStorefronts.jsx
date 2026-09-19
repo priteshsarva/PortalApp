@@ -1085,6 +1085,7 @@ function CustomDomainPanel({ site, onChanged }) {
       setMsg(domain.trim()
         ? "Domain saved. Add the DNS records below at your registrar — the SSL certificate is issued automatically, usually within a few minutes. Then click Check status."
         : "Domain cleared.");
+      if (r.warning) setError(new Error(r.warning));
       onChanged();
     } catch (e) { setError(e); }
     finally { setBusy(false); }
