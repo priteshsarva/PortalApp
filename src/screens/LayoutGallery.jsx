@@ -17,9 +17,16 @@ const TEMPLATES = [
   { id: "haven", name: "Haven", tag: "Furniture / décor", description: "Warm editorial magazine look — cream + espresso, serif headings, split hero, room grid, lifestyle gallery. Best for furniture, décor & lifestyle." },
 ];
 
+// Preview window height and the tall iframe we slide up inside it on hover, so
+// the whole layout auto-scrolls into view (we can't scroll a cross-origin iframe
+// from the parent, so we move the iframe element instead).
+const WIN_H = 320, FRAME_H = 1500;
+
 export default function LayoutGallery({ onCreated }) {
   const [sites, setSites] = useState(null);
-  const [creating, setCreating] = useState(null);    // template being created (modal)
+  const [hovered, setHovered] = useState(null);   // template id being auto-scrolled
+  const [chosen, setChosen] = useState(null);     // template whose options modal is open
+  const [creating, setCreating] = useState(null); // template being created (name modal)
 
   useEffect(() => { api.myHostedSites().then((r) => setSites(r.sites || [])).catch(() => setSites([])); }, []);
 
@@ -42,12 +49,13 @@ export default function LayoutGallery({ onCreated }) {
 
   return (
     <div>
-      <PageHead title="Store layouts" sub="Every layout shown live with demo products. Pick one and create your store with it in a click — you can switch layouts any time." />
+      <PageHead title="Store layouts" sub="Hover a layout to auto-scroll through it; click to open a full preview or create your store with it." />
 
       {sites === null ? <Spinner /> : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
           {TEMPLATES.map((t) => {
             const url = previewUrl(t.id);
+            const on = hovered === t.id;
             return (
               <Card key={t.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
@@ -58,12 +66,22 @@ export default function LayoutGallery({ onCreated }) {
                   <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 7, minHeight: 54, lineHeight: 1.5 }}>{t.description}</div>
                 </div>
 
-                {/* live preview — always on, non-interactive (click "Open full
-                    preview" to explore). Shows the layout with demo products. */}
-                <div style={{ border: "1px solid #e6e9f0", borderRadius: 10, overflow: "hidden", height: 320, background: "#fff", position: "relative" }}>
+                {/* live preview — hover auto-scrolls the whole layout; click opens
+                    the options modal. The iframe itself is non-interactive. */}
+                <div
+                  onMouseEnter={() => url && setHovered(t.id)}
+                  onMouseLeave={() => setHovered((h) => (h === t.id ? null : h))}
+                  onClick={() => url && setChosen(t)}
+                  style={{ border: "1px solid #e6e9f0", borderRadius: 10, overflow: "hidden", height: WIN_H, background: "#fff", position: "relative", cursor: url ? "pointer" : "default" }}
+                >
                   {url ? (
-                    <iframe key={t.id} title={`${t.name} preview`} src={url} loading="lazy" tabIndex={-1}
-                      style={{ border: "none", width: "100%", height: "100%", pointerEvents: "none" }} />
+                    <>
+                      <iframe key={t.id} title={`${t.name} preview`} src={url} loading="lazy" tabIndex={-1} scrolling="no"
+                        style={{ border: "none", width: "100%", height: FRAME_H, pointerEvents: "none", transform: on ? `translateY(-${FRAME_H - WIN_H}px)` : "translateY(0)", transition: on ? "transform 7s linear" : "transform 0.5s ease" }} />
+                      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "18px 12px 8px", background: "linear-gradient(to top, rgba(14,23,38,0.55), transparent)", color: "#fff", fontSize: 11.5, fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", opacity: on ? 0 : 1, transition: "opacity .25s ease", pointerEvents: "none" }}>
+                        <span>Hover to scroll</span><span>Click to open ↗</span>
+                      </div>
+                    </>
                   ) : (
                     <div style={{ display: "grid", placeItems: "center", height: "100%", color: "#9aa3b2", fontSize: 12.5, padding: 16, textAlign: "center" }}>
                       Live preview appears once a demo store is set.
@@ -71,13 +89,8 @@ export default function LayoutGallery({ onCreated }) {
                   )}
                 </div>
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: "auto", alignItems: "center" }}>
+                <div style={{ marginTop: "auto" }}>
                   <Btn tone="lime" small onClick={() => setCreating(t)}>Create store with this</Btn>
-                  {url && (
-                    <a href={url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12.5, color: "#3b6fd8", textDecoration: "none" }}>
-                      Open full preview <ExternalLink size={12} />
-                    </a>
-                  )}
                 </div>
               </Card>
             );
@@ -89,6 +102,19 @@ export default function LayoutGallery({ onCreated }) {
         <div style={{ fontSize: 12.5, color: "#8a6d2f", background: "#fff7e6", border: "1px solid #f0d9a8", borderRadius: 8, padding: "10px 12px", marginTop: 14 }}>
           Set <code>VITE_DEMO_STORE</code> to a live store slug (with products) in the portal's build settings to show demo products in every preview.
         </div>
+      )}
+
+      {chosen && (
+        <Modal title={chosen.name} onClose={() => setChosen(null)}>
+          <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 16 }}>{chosen.description}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <a href={previewUrl(chosen.id)} target="_blank" rel="noreferrer" onClick={() => setChosen(null)}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none", border: "1px solid #d4d9e3", borderRadius: 10, padding: "11px 14px", fontSize: 14, fontWeight: 600, color: "#1b2230" }}>
+              Open full live preview <ExternalLink size={15} />
+            </a>
+            <Btn tone="lime" onClick={() => { setCreating(chosen); setChosen(null); }}>Create store with this layout</Btn>
+          </div>
+        </Modal>
       )}
 
       {creating && <CreateWithLayout template={creating} onClose={() => setCreating(null)} onCreated={onCreated} />}
