@@ -226,15 +226,22 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
   const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
 
-  function afterVerify(r) { onAuthed(r.user); if (r.profile_complete) onClose(); else setPhase("details"); }
+  // Mobile is verified, but the account isn't usable until name + email are in —
+  // so we DON'T unlock (onAuthed) on verify; we move to the required details step.
+  function afterVerify(r) { if (r.profile_complete) { onAuthed(r.user); onClose(); } else setPhase("details"); }
+  const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const canSave = name.trim() && emailOk && !busy;
   async function saveDetails() {
+    if (!canSave) return;
     setBusy(true); setErr("");
-    try { const r = await api.completeProfile({ name, email: email || undefined, password: password || undefined }); onAuthed(r.user); onClose(); }
+    try { const r = await api.completeProfile({ name: name.trim(), email: email.trim(), password: password || undefined }); onAuthed(r.user); onClose(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   }
 
+  // On the required-details step the modal can't be dismissed (no skip) — the
+  // account exists but stays incomplete until they finish.
   return (
-    <Modal title={phase === "details" ? "You're in — 50 free views" : "Get 50 free product views"} onClose={onClose}>
+    <Modal title={phase === "details" ? "Finish creating your account" : "Get 50 free product views"} onClose={phase === "details" ? undefined : onClose}>
       {phase === "verify" ? (
         <>
           <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Sign up with your mobile number — no password needed.</p>
@@ -243,12 +250,11 @@ function SignupModal({ onClose, onAuthed, onSignIn }) {
       ) : (
         <>
           {err && <div style={errBox}>{err}</div>}
-          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Your number is verified. Finish creating your account so you can also sign in with email later — or skip.</p>
+          <p style={{ color: "#6b7688", fontSize: 13.5, margin: "0 0 16px" }}>Your number is verified. Add your name and email to finish — you'll use them for invoices, receipts and to sign in with email.</p>
           <input style={input} placeholder="Your name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
-          <input style={{ ...input, marginTop: 10 }} type="email" autoComplete="email" placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input style={{ ...input, marginTop: 10 }} type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input style={{ ...input, marginTop: 10 }} type="password" autoComplete="new-password" placeholder="Set a password (optional)" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <button onClick={saveDetails} disabled={busy} style={btnPrimary}>{busy ? "Saving…" : "Create account"}</button>
-          <button onClick={onClose} style={btnGhost}>Skip for now</button>
+          <button onClick={saveDetails} disabled={!canSave} style={{ ...btnPrimary, opacity: canSave ? 1 : 0.6 }}>{busy ? "Saving…" : "Create account"}</button>
         </>
       )}
     </Modal>

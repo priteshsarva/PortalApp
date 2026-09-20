@@ -219,6 +219,9 @@ export const api = {
   adminDeleteSource: (id) =>
     req(`/portal/admin/sources/${id}`, { method: "DELETE" }),
 
+  // ---- admin: mobile numbers (registered vs verified-only) ----
+  adminMobiles: () => req("/portal/admin/mobiles"),
+
   // ---- admin: enrollment + scrape-request queues ----
   adminEnrollments: (status) => req(`/portal/admin/enrollments${status ? `?status=${status}` : ""}`),
   adminEnrollmentOverview: () => req("/portal/admin/enrollment-overview"),

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   LayoutDashboard, Globe, Tags, PlusCircle, Plug, Inbox, ShieldCheck, Users,
   Megaphone, ScrollText, BarChart3, Search, Store, Receipt, LogOut, KeyRound, Database,
-  Mail, CreditCard, LayoutTemplate, ClipboardList, Bell, Menu,
+  Mail, CreditCard, LayoutTemplate, ClipboardList, Bell, Menu, LayoutGrid, Smartphone,
 } from "lucide-react";
 import { api, getToken, setToken } from "./api.js";
 import { C, Stub, useIsMobile } from "./ui.jsx";
@@ -35,6 +35,8 @@ import Wallet from "./screens/Wallet.jsx";
 import AdminShipments from "./screens/AdminShipments.jsx";
 import AdminWallet from "./screens/AdminWallet.jsx";
 import AdminLogs from "./screens/AdminLogs.jsx";
+import AdminMobiles from "./screens/AdminMobiles.jsx";
+import LayoutGallery from "./screens/LayoutGallery.jsx";
 import WelcomeTour from "./Tour.jsx";
 
 // Wholesale-seller feature (vendors listing their own products) is parked for now
@@ -44,6 +46,7 @@ const WHOLESALE_ENABLED = false;
 const clientNav = [
   ["dashboard", "Home", LayoutDashboard],
   ["storefront", "My online store", LayoutTemplate],
+  ["layouts", "Store layouts", LayoutGrid],
   ["orders", "Orders", ClipboardList],
   ["request", "Request new source", PlusCircle],
   ["search", "Browse products", Search],
@@ -67,6 +70,7 @@ const adminNav = [
   ...(WHOLESALE_ENABLED ? [["wholesalers", "Wholesale", Store]] : []),
   ["shipments", "Shipments", ClipboardList],
   ["users", "Clients", Users],
+  ["mobiles", "Mobile numbers", Smartphone],
   ["sources", "Product sources", Database],
   ["brandMap", "Brand names", Tags],
   ["enrollAdmin", "Plugin sign-ups", ShieldCheck],
@@ -138,6 +142,7 @@ export default function App() {
         case "dashboard": return <Dashboard me={user} />;
         case "sites": return <MySites />;
         case "storefront": return <MyStorefronts />;
+        case "layouts": return <LayoutGallery onCreated={() => setNav("storefront")} />;
         case "orders": return <MyOrders />;
         case "request": return <RequestSite />;
         case "plugin": return <PluginSetup />;
@@ -163,6 +168,7 @@ export default function App() {
       case "wholesalers": return WHOLESALE_ENABLED ? <AdminWholesalers /> : <ComingSoon title="Wholesale" note="Supplier onboarding is coming soon." />;
       case "shipments": return <AdminShipments />;
       case "users": return <AdminClients />;
+      case "mobiles": return <AdminMobiles />;
       case "email": return <AdminEmailSettings />;
       case "payments": return <AdminPaymentSettings />;
       case "logs": return <AdminLogs />;
@@ -248,36 +254,45 @@ export default function App() {
           </main>
         </div>
       )}
-      {role === "client" && !user.email && <EmailRequiredPopup onDone={setUser} />}
+      {role === "client" && !user.email && <CompleteProfileGate user={user} onDone={setUser} />}
       {role === "client" && user.email && <ProSetupPopup />}
       {role === "client" && <WelcomeTour setNav={setNav} />}
     </div>
   );
 }
 
-// Every client must have an email on file. Mobile-OTP signups can arrive with
-// none — nag until they add one. Gated on !user.email so it returns every
-// session until resolved (no permanent dismissal).
-function EmailRequiredPopup({ onDone }) {
+// Every client must have a name + email on file. Mobile-OTP signups arrive with
+// neither, so this is a BLOCKING gate (can't be dismissed) shown until the
+// profile is complete — an OTP account isn't usable without details. Password
+// stays optional (they can still sign in with OTP).
+function CompleteProfileGate({ user, onDone }) {
+  const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const canSave = name.trim() && emailOk && !busy;
+  const fld = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8, border: "1px solid #33405a", background: "#0b111c", color: "#fff", fontSize: 13.5, marginBottom: 10 };
   async function save() {
-    if (!email.trim()) return;
+    if (!canSave) return;
     setBusy(true); setErr("");
-    try { const r = await api.completeProfile({ email: email.trim() }); onDone(r.user); }
+    try { const r = await api.completeProfile({ name: name.trim(), email: email.trim(), password: password || undefined }); onDone(r.user); }
     catch (e) { setErr(e.message); setBusy(false); }
   }
   return (
-    <div style={{ position: "fixed", right: 20, bottom: 20, zIndex: 1001, width: 300, background: "#0E1726", color: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 12px 40px rgba(0,0,0,0.28)", border: `1px solid ${C.lime}` }}>
-      <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 6 }}>Add your email</div>
-      <div style={{ fontSize: 12.5, color: "#c3ccd8", marginBottom: 10 }}>We need an email on your account for order updates, invoices and receipts.</div>
-      {err && <div style={{ fontSize: 12, color: "#ffb3b3", marginBottom: 8 }}>{err}</div>}
-      <input type="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)}
-        style={{ width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 8, border: "1px solid #33405a", background: "#0b111c", color: "#fff", fontSize: 13, marginBottom: 10 }} />
-      <button onClick={save} disabled={busy} style={{ width: "100%", background: C.lime, color: "#0E1726", border: "none", borderRadius: 8, padding: "9px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13.5, opacity: busy ? 0.6 : 1 }}>
-        {busy ? "Saving…" : "Save email"}
-      </button>
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(8,12,20,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "min(380px,100%)", background: "#0E1726", color: "#fff", borderRadius: 16, padding: 22, border: `1px solid ${C.lime}`, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Finish setting up your account</div>
+        <div style={{ fontSize: 12.5, color: "#c3ccd8", marginBottom: 14 }}>Your mobile is verified. Add your name and email to continue — we use them for order updates, invoices and receipts.</div>
+        {err && <div style={{ fontSize: 12, color: "#ffb3b3", marginBottom: 10 }}>{err}</div>}
+        <input autoComplete="name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} style={fld} />
+        <input type="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)} style={fld} />
+        <input type="password" autoComplete="new-password" placeholder="Set a password (optional)" value={password} onChange={(e) => setPassword(e.target.value)} style={fld} />
+        <button onClick={save} disabled={!canSave} style={{ width: "100%", background: C.lime, color: "#0E1726", border: "none", borderRadius: 8, padding: "10px 12px", fontWeight: 700, cursor: canSave ? "pointer" : "default", fontSize: 14, opacity: canSave ? 1 : 0.6 }}>
+          {busy ? "Saving…" : "Save & continue"}
+        </button>
+      </div>
     </div>
   );
 }
