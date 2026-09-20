@@ -163,8 +163,9 @@ function EditSourceModal({ source, onClose, onSaved }) {
       </label>
       <label style={lbl}>Method
         <select style={inputStyle} value={form.method} onChange={(e) => set("method", e.target.value)}>
-          <option value="METHOD_A">METHOD_A</option>
-          <option value="METHOD_B">METHOD_B</option>
+          <option value="METHOD_A">METHOD_A (cartpe classic)</option>
+          <option value="METHOD_B">METHOD_B (jdwebnship /categories)</option>
+          <option value="METHOD_C">METHOD_C (cartpe.in encrypted API)</option>
           <option value="MANUAL">MANUAL (not auto-scraped)</option>
         </select>
       </label>
