@@ -19,32 +19,34 @@ const TEMPLATES = [
 
 export default function LayoutGallery({ onCreated }) {
   const [sites, setSites] = useState(null);
-  const [previewId, setPreviewId] = useState(null); // which layout is expanded to a live preview
   const [creating, setCreating] = useState(null);    // template being created (modal)
 
   useEffect(() => { api.myHostedSites().then((r) => setSites(r.sites || [])).catch(() => setSites([])); }, []);
 
+  // Preview source: a shared demo store (VITE_DEMO_STORE) is preferred so every
+  // layout shows the SAME demo products and is comparable; else fall back to the
+  // client's own first store (with its preview password for a draft).
   const demo = import.meta.env.VITE_DEMO_STORE || "";
-  const pv = sites && sites[0];
+  const own = sites && sites[0];
+  const usingDemo = !!demo;
   function previewUrl(id) {
     let base;
-    if (pv) base = storeUrl(pv.slug);
-    else if (demo) base = storeUrl(demo);
+    if (demo) base = storeUrl(demo);
+    else if (own) base = storeUrl(own.slug);
     else return null;
     let u = base + (base.includes("?") ? "&" : "?") + "preset=" + encodeURIComponent(id);
-    if (pv?.preview_password) u += "&preview_pw=" + encodeURIComponent(pv.preview_password);
+    if (!usingDemo && own?.preview_password) u += "&preview_pw=" + encodeURIComponent(own.preview_password);
     return u;
   }
-  const canPreview = !!(pv || demo);
+  const canPreview = !!(demo || own);
 
   return (
     <div>
-      <PageHead title="Store layouts" sub="Pick a ready-made design for your storefront. Preview each one live, then create your store with it in one click — you can switch layouts any time." />
+      <PageHead title="Store layouts" sub="Every layout shown live with demo products. Pick one and create your store with it in a click — you can switch layouts any time." />
 
       {sites === null ? <Spinner /> : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
           {TEMPLATES.map((t) => {
-            const open = previewId === t.id;
             const url = previewUrl(t.id);
             return (
               <Card key={t.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -56,20 +58,24 @@ export default function LayoutGallery({ onCreated }) {
                   <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 7, minHeight: 54, lineHeight: 1.5 }}>{t.description}</div>
                 </div>
 
-                {open && url && (
-                  <div style={{ border: "1px solid #e6e9f0", borderRadius: 10, overflow: "hidden", height: 380, background: "#fff" }}>
-                    <iframe key={t.id} title={`${t.name} preview`} src={url} style={{ width: "100%", height: "100%", border: "none" }} />
-                  </div>
-                )}
+                {/* live preview — always on, non-interactive (click "Open full
+                    preview" to explore). Shows the layout with demo products. */}
+                <div style={{ border: "1px solid #e6e9f0", borderRadius: 10, overflow: "hidden", height: 320, background: "#fff", position: "relative" }}>
+                  {url ? (
+                    <iframe key={t.id} title={`${t.name} preview`} src={url} loading="lazy" tabIndex={-1}
+                      style={{ border: "none", width: "100%", height: "100%", pointerEvents: "none" }} />
+                  ) : (
+                    <div style={{ display: "grid", placeItems: "center", height: "100%", color: "#9aa3b2", fontSize: 12.5, padding: 16, textAlign: "center" }}>
+                      Live preview appears once a demo store is set.
+                    </div>
+                  )}
+                </div>
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: "auto" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: "auto", alignItems: "center" }}>
                   <Btn tone="lime" small onClick={() => setCreating(t)}>Create store with this</Btn>
-                  {canPreview ? (
-                    <Btn tone="ghost" small onClick={() => setPreviewId(open ? null : t.id)}>{open ? "Hide preview" : "Live preview"}</Btn>
-                  ) : null}
                   {url && (
-                    <a href={url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12.5, color: "#3b6fd8", textDecoration: "none", alignSelf: "center" }}>
-                      Open ↗
+                    <a href={url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12.5, color: "#3b6fd8", textDecoration: "none" }}>
+                      Open full preview <ExternalLink size={12} />
                     </a>
                   )}
                 </div>
@@ -80,8 +86,8 @@ export default function LayoutGallery({ onCreated }) {
       )}
 
       {!canPreview && sites !== null && (
-        <div style={{ fontSize: 12.5, color: "#6b7688", marginTop: 14 }}>
-          Create your first store to see live previews filled with your own products.
+        <div style={{ fontSize: 12.5, color: "#8a6d2f", background: "#fff7e6", border: "1px solid #f0d9a8", borderRadius: 8, padding: "10px 12px", marginTop: 14 }}>
+          Set <code>VITE_DEMO_STORE</code> to a live store slug (with products) in the portal's build settings to show demo products in every preview.
         </div>
       )}
 
