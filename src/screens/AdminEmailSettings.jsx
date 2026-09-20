@@ -49,7 +49,7 @@ export default function AdminEmailSettings() {
         <Field label="Password / app password">
           <input style={inputStyle} type="password" value={cfg.pass || ""} onChange={(e) => set("pass", e.target.value)} placeholder={cfg.hasPass ? "•••••••• (unchanged)" : ""} />
         </Field>
-        <Field label="From address"><input style={inputStyle} value={cfg.from || ""} onChange={(e) => set("from", e.target.value)} placeholder="Server Products <no-reply@yourco.com>" /></Field>
+        <Field label="From address"><input style={inputStyle} value={cfg.from || ""} onChange={(e) => set("from", e.target.value)} placeholder="Kartify <no-reply@yourco.com>" /></Field>
         <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
           <Btn tone="lime" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</Btn>
         </div>

@@ -75,7 +75,7 @@ export default function Login({ onLogin, onBack }) {
           <div style={{ width: 30, height: 30, borderRadius: 8, background: C.lime, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <KeyRound size={17} color={C.ink} />
           </div>
-          <strong style={{ fontSize: 17 }}>Server Products</strong>
+          <strong style={{ fontSize: 17 }}>Kartify</strong>
         </div>
         <p style={{ color: "#6b7688", fontSize: 13, margin: "0 0 20px" }}>
           {isOtp ? "Sign in or sign up with your mobile number." : isSignup ? "Create your account to get started." : "Sign in to your portal."}

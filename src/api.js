@@ -249,6 +249,7 @@ export const api = {
   notifications: () => req("/portal/notifications"),
   requestProSetup: (message) => req("/portal/setup-requests", { method: "POST", body: { message } }),
   createHostedSite: (store_name, slug) => req("/portal/hosted-sites", { method: "POST", body: { store_name, slug } }),
+  deleteHostedSite: (id) => req(`/portal/hosted-sites/${id}`, { method: "DELETE" }),
   submitHostedSite: (id, body) => req(`/portal/hosted-sites/${id}/submit`, { method: "POST", body }),
   hostedSiteSettings: (id) => req(`/portal/hosted-sites/${id}/settings`),
   saveHostedSiteSettings: (id, settings) => req(`/portal/hosted-sites/${id}/settings`, { method: "PUT", body: settings }),

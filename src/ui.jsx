@@ -1,9 +1,11 @@
 import React from "react";
 
+// Kartify brand palette — matches the landing page: warm ink + bone neutrals with
+// an emerald accent (the "lime" key is kept for compatibility; it's now emerald).
 export const C = {
-  ink: "#0E1726", surface: "#161F33", surface2: "#1E293F", line: "#283449",
-  paper: "#F7F8FB", text: "#E8ECF4", dim: "#93A1B8",
-  lime: "#C8FF3D", amber: "#F6B45A", coral: "#FF6B6B", sky: "#7DC4FF",
+  ink: "#17160F", surface: "#201F18", surface2: "#2B2921", line: "#3A382E",
+  paper: "#F6F5F1", text: "#EEEBE3", dim: "#A6A196",
+  lime: "#34C08A", amber: "#F6B45A", coral: "#FF6B6B", sky: "#7DC4FF",
 };
 
 // True on phone-width viewports. Drives the responsive shell + layouts so the

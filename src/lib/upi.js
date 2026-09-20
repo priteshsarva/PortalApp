@@ -2,7 +2,7 @@
 // (vendors paying their plan invoice by UPI). Mirrors the storefront helper.
 export function upiLink({ upiId, upiName, amount, ref }) {
   const p = new URLSearchParams({
-    pa: upiId, pn: upiName || "Server Products",
+    pa: upiId, pn: upiName || "Kartify",
     am: String(amount), cu: "INR", tn: ref || "",
   });
   return "upi://pay?" + p.toString();

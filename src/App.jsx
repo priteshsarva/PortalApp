@@ -188,7 +188,7 @@ export default function App() {
         <div style={{ width: 30, height: 30, borderRadius: 8, background: C.lime, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <KeyRound size={17} color={C.ink} />
         </div>
-        <strong style={{ fontSize: 15.5 }}>Server Products</strong>
+        <strong style={{ fontSize: 15.5 }}>Kartify</strong>
       </div>
 
       <nav style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 3, overflowY: "auto", flex: "1 1 auto", minHeight: 0 }}>
@@ -227,7 +227,7 @@ export default function App() {
               <Menu size={22} />
             </button>
             <div style={{ width: 24, height: 24, borderRadius: 6, background: C.lime, display: "grid", placeItems: "center" }}><KeyRound size={14} color={C.ink} /></div>
-            <strong style={{ fontSize: 15 }}>Server Products</strong>
+            <strong style={{ fontSize: 15 }}>Kartify</strong>
             {unread > 0 && (
               <button onClick={() => goTo("notifications")} style={{ marginLeft: "auto", position: "relative", background: "none", border: "none", color: "#fff", cursor: "pointer", display: "flex" }}>
                 <Bell size={20} />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { ExternalLink, Plus, ArrowLeft, Search, ArrowRight, Copy } from "lucide-react";
+import { ExternalLink, Plus, ArrowLeft, Search, ArrowRight, Copy, Trash2 } from "lucide-react";
 import { api } from "../api.js";
 import ShipmentModal from "../components/ShipmentModal.jsx";
 import { C, PageHead, Card, Btn, Badge, Field, inputStyle, Spinner, ErrorNote, Empty, Modal, fmtDate, storeUrl, useIsMobile, useCopyToast } from "../ui.jsx";
@@ -170,6 +170,12 @@ function StoreDetail({ site, onBack, onChanged }) {
     finally { setSubmitting(false); }
   }
 
+  async function deleteStore() {
+    if (!window.confirm(`Delete “${site.store_name}”? This permanently removes the storefront and can't be undone.`)) return;
+    try { await api.deleteHostedSite(site.id); onBack(); onChanged?.(); }
+    catch (e) { alert(e.message); }
+  }
+
   return (
     <div>
       {toast}
@@ -195,9 +201,19 @@ function StoreDetail({ site, onBack, onChanged }) {
             </button>
           </div>
         </div>
-        <Btn tone="ghost" small onClick={() => setMode((m) => (m === "wizard" ? "edit" : "wizard"))}>
-          {mode === "wizard" ? "Edit all settings" : (isLive ? "Customise storefront" : "Guided setup")}
-        </Btn>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <Btn tone="ghost" small onClick={() => setMode((m) => (m === "wizard" ? "edit" : "wizard"))}>
+            {mode === "wizard" ? "Edit all settings" : (isLive ? "Customise storefront" : "Guided setup")}
+          </Btn>
+          {/* Delete is available only while NOT live — an active plan must be
+              cancelled first (also enforced server-side). */}
+          {!isLive && (
+            <button type="button" onClick={deleteStore} title="Delete storefront"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "1px solid #f0c2c2", color: "#c0392b", borderRadius: 8, padding: "6px 11px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+              <Trash2 size={14} /> Delete
+            </button>
+          )}
+        </div>
       </div>
 
       {site.status === "paused" && (
@@ -629,6 +645,12 @@ function ProductsPanel({ siteId, onChanged, onValid }) {
                 <input type="checkbox" checked={sel.has(s.id)} onChange={() => toggle(s.id)} />
                 <span style={{ color: "#1b2230" }}>{s.name}</span>
                 <span style={{ color: "#b3bccb", fontSize: 11 }}>{s.id}</span>
+                {s.base_url && (
+                  <a href={s.base_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                    title="Visit source site" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, color: "#3b6fd8", fontSize: 11.5, textDecoration: "none" }}>
+                    Visit <ExternalLink size={11} />
+                  </a>
+                )}
               </label>
             ))}
           </div>

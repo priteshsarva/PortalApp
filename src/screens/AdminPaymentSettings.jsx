@@ -50,7 +50,7 @@ function PlatformUpiCard() {
       <ErrorNote error={err} />
       {msg && <div style={{ background: "#eef7ee", border: "1px solid #cbe5cb", color: "#2c6e2c", padding: "8px 12px", borderRadius: 8, marginBottom: 12, fontSize: 12.5 }}>{msg}</div>}
       <Field label="UPI ID"><input style={inputStyle} value={f.upi_id} onChange={(e) => setF({ ...f, upi_id: e.target.value.trim() })} placeholder="platform@okhdfcbank" /></Field>
-      <Field label="Payee name (shown in the UPI app)"><input style={inputStyle} value={f.upi_name} onChange={(e) => setF({ ...f, upi_name: e.target.value })} placeholder="Server Products" /></Field>
+      <Field label="Payee name (shown in the UPI app)"><input style={inputStyle} value={f.upi_name} onChange={(e) => setF({ ...f, upi_name: e.target.value })} placeholder="Kartify" /></Field>
       <Field label="Billing WhatsApp (where vendors send screenshots)"><input style={inputStyle} value={f.whatsapp} onChange={(e) => setF({ ...f, whatsapp: e.target.value })} placeholder="+91 98765 43210" /></Field>
       <Btn tone="lime" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</Btn>
     </Card>

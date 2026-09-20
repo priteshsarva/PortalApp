@@ -8,7 +8,7 @@ import { Search, ExternalLink, KeyRound, PlusCircle, X } from "lucide-react";
 import { api, getToken } from "../api.js";
 import PhoneVerify from "../components/PhoneVerify.jsx";
 
-const C = { ink: "#0E1726", lime: "#c4f000", paper: "#f6f7f9" };
+const C = { ink: "#17160F", lime: "#34C08A", paper: "#F6F5F1" };
 const inr = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const input = { width: "100%", boxSizing: "border-box", padding: "11px 13px", border: "1px solid #d8dee8", borderRadius: 10, fontSize: 14, outline: "none" };
 
@@ -93,7 +93,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
       {/* header */}
       <header style={{ background: C.ink, color: "#fff", padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 30, height: 30, borderRadius: 8, background: C.lime, display: "grid", placeItems: "center" }}><KeyRound size={17} color={C.ink} /></div>
-        <strong style={{ fontSize: 16 }}>Server Products</strong>
+        <strong style={{ fontSize: 16 }}>Kartify</strong>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
           <button onClick={() => setModal("plan")} style={{ background: "none", color: "#fff", border: "1px solid #33405a", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>Plans</button>
           {(me || signedIn)
@@ -308,7 +308,7 @@ function PlanModal({ onClose, signedIn, onAuthed }) {
 
   const upi = data?.upi || {};
   const amount = data?.amount ?? (chosen ? Number(chosen.price) : 0);
-  const link = upi.upi_id ? `upi://pay?pa=${encodeURIComponent(upi.upi_id)}&pn=${encodeURIComponent(upi.upi_name || "Server Products")}&am=${amount}&cu=INR&tn=${encodeURIComponent("Search plan")}` : null;
+  const link = upi.upi_id ? `upi://pay?pa=${encodeURIComponent(upi.upi_id)}&pn=${encodeURIComponent(upi.upi_name || "Kartify")}&am=${amount}&cu=INR&tn=${encodeURIComponent("Search plan")}` : null;
   useEffect(() => { if (link) QRCode.toDataURL(link, { width: 420, margin: 2 }).then(setQr).catch(() => setQr("")); else setQr(""); }, [link]);
   const per = (p) => `/ ${p.interval_count > 1 ? p.interval_count + " " : ""}${p.interval}${p.interval_count > 1 ? "s" : ""}`;
   const allowance = (p) => (p.limits && p.limits.search_views) ? `${p.limits.search_views} product views` : "Unlimited product views";

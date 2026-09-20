@@ -42,6 +42,7 @@ export default function LayoutGallery({ onCreated }) {
     else if (own) base = storeUrl(own.slug);
     else return null;
     let u = base + (base.includes("?") ? "&" : "?") + "preset=" + encodeURIComponent(id);
+    u += "&palette=default"; // show each layout's own default colours in the demo
     if (!usingDemo && own?.preview_password) u += "&preview_pw=" + encodeURIComponent(own.preview_password);
     return u;
   }
