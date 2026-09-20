@@ -357,7 +357,7 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged, locked = () => fal
           <button key={s.key} onClick={() => setI(j)}
             style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer",
               background: j === i ? "#1b2230" : "#eef1f6", color: j === i ? "#fff" : "#42505f", borderRadius: 999, padding: "7px 12px", fontSize: 12.5, fontWeight: j === i ? 700 : 500 }}>
-            <span style={{ width: 18, height: 18, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 10.5, background: done(j) ? "#C8FF3D" : j === i ? "#fff" : "#d4d9e3", color: "#1b2230" }}>{done(j) && j !== i ? "✓" : j + 1}</span>
+            <span style={{ width: 18, height: 18, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 10.5, background: done(j) ? "#34C08A" : j === i ? "#fff" : "#d4d9e3", color: "#1b2230" }}>{done(j) && j !== i ? "✓" : j + 1}</span>
             {s.title}
           </button>
         ))}
@@ -392,7 +392,7 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged, locked = () => fal
                 background: j === i ? "#eef6ff" : "transparent", borderRadius: 8, padding: "8px 10px", fontSize: 12.5,
                 color: j === i ? "#1b2230" : "#42505f", fontWeight: j === i ? 700 : 500 }}>
               <span style={{ width: 20, height: 20, borderRadius: 999, display: "grid", placeItems: "center", fontSize: 11,
-                background: done(j) && j !== i ? "#C8FF3D" : j === i ? "#1b2230" : "#e6e9f0", color: j === i ? "#fff" : "#1b2230" }}>
+                background: done(j) && j !== i ? "#34C08A" : j === i ? "#1b2230" : "#e6e9f0", color: j === i ? "#fff" : "#1b2230" }}>
                 {done(j) && j !== i ? "✓" : j + 1}
               </span>
               <span style={{ flex: 1 }}>{s.title}</span>
@@ -485,7 +485,7 @@ function GoLivePanel({ site, onChanged }) {
                 const locked = site.status !== "draft";
                 return (
                   <button key={p.id} disabled={locked} onClick={() => setPlanId(p.id)}
-                    style={{ textAlign: "left", cursor: locked ? "default" : "pointer", border: on ? "2px solid #C8FF3D" : "1px solid #e6e9f0", borderRadius: 10, padding: "11px 13px", background: "#fff", opacity: locked && !on ? 0.5 : 1 }}>
+                    style={{ textAlign: "left", cursor: locked ? "default" : "pointer", border: on ? "2px solid #34C08A" : "1px solid #e6e9f0", borderRadius: 10, padding: "11px 13px", background: "#fff", opacity: locked && !on ? 0.5 : 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                       <span style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</span>
                       <span style={{ fontWeight: 700, fontSize: 13.5 }}>
@@ -997,7 +997,7 @@ function NavigationPanel({ siteId }) {
                                           {sbshown.map((sb) => {
                                             const on = !!subbrandSel[sbkey(c, br.name, sb.name)];
                                             return (
-                                              <label key={sb.name} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, border: `1px solid ${on ? "#C8FF3D" : "#eef1f6"}`, borderRadius: 6, padding: "3px 7px", cursor: "pointer" }}>
+                                              <label key={sb.name} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, border: `1px solid ${on ? "#34C08A" : "#eef1f6"}`, borderRadius: 6, padding: "3px 7px", cursor: "pointer" }}>
                                                 <input type="checkbox" checked={on} onChange={() => toggleSubbrand(c, br.name, sb.name)} /> {sb.name} <span style={{ color: "#b3bccb" }}>{sb.count}</span>
                                               </label>
                                             );
@@ -1291,7 +1291,7 @@ function HomepagePresetPanel({ site }) {
             const isOn = p.id === "original" ? (!applied || applied === "original") : applied === p.id;
             const canPreview = COMPONENT_TEMPLATES.some((t) => t.id === p.id);
             return (
-              <div key={p.id} style={{ border: (previewId ? previewId === p.id : isOn) ? "2px solid #C8FF3D" : "1px solid #e6e9f0", borderRadius: 10, padding: 14, background: "#fff" }}>
+              <div key={p.id} style={{ border: (previewId ? previewId === p.id : isOn) ? "2px solid #34C08A" : "1px solid #e6e9f0", borderRadius: 10, padding: 14, background: "#fff" }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{p.name}</div>
                 <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10, minHeight: 32 }}>{p.description}</div>
                 <div style={{ fontSize: 11, color: "#9aa3b2", marginBottom: 10 }}>{p.section_count === "auto" ? "auto-built" : `${p.section_count} sections`}</div>

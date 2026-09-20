@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { api, setToken } from "../api.js";
 import { firebaseEnabled, makeRecaptcha, sendPhoneOtp } from "../lib/firebase.js";
 
-const ink = "#0E1726";
+const ink = "#17160F";
 const input = { width: "100%", boxSizing: "border-box", padding: "11px 13px", border: "1px solid #d8dee8", borderRadius: 10, fontSize: 14, outline: "none" };
 const btnPrimary = { width: "100%", marginTop: 12, background: ink, color: "#fff", border: "none", borderRadius: 10, padding: "11px 14px", fontWeight: 700, fontSize: 14, cursor: "pointer" };
 const errBox = { background: "#fdecec", color: "#b23a48", padding: "8px 11px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 };

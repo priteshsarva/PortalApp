@@ -95,10 +95,10 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
         <div style={{ width: 30, height: 30, borderRadius: 8, background: C.lime, display: "grid", placeItems: "center" }}><KeyRound size={17} color={C.ink} /></div>
         <strong style={{ fontSize: 16 }}>Kartify</strong>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
-          <button onClick={() => setModal("plan")} style={{ background: "none", color: "#fff", border: "1px solid #33405a", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>Plans</button>
+          <button onClick={() => setModal("plan")} style={{ background: "none", color: "#fff", border: "1px solid #3A382E", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>Plans</button>
           {(me || signedIn)
             ? <button onClick={() => onSignedIn(me || {})} style={{ background: C.lime, color: C.ink, border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>My dashboard →</button>
-            : <button onClick={onSignIn} style={{ background: "none", color: "#fff", border: "1px solid #33405a", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>Sign in</button>}
+            : <button onClick={onSignIn} style={{ background: "none", color: "#fff", border: "1px solid #3A382E", borderRadius: 8, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>Sign in</button>}
         </div>
       </header>
 

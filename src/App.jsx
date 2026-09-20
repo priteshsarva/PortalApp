@@ -273,7 +273,7 @@ function CompleteProfileGate({ user, onDone }) {
   const [err, setErr] = useState("");
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
   const canSave = name.trim() && emailOk && !busy;
-  const fld = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8, border: "1px solid #33405a", background: "#0b111c", color: "#fff", fontSize: 13.5, marginBottom: 10 };
+  const fld = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8, border: "1px solid #3A382E", background: "#201F18", color: "#fff", fontSize: 13.5, marginBottom: 10 };
   async function save() {
     if (!canSave) return;
     setBusy(true); setErr("");
@@ -282,14 +282,14 @@ function CompleteProfileGate({ user, onDone }) {
   }
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(8,12,20,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ width: "min(380px,100%)", background: "#0E1726", color: "#fff", borderRadius: 16, padding: 22, border: `1px solid ${C.lime}`, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+      <div style={{ width: "min(380px,100%)", background: "#17160F", color: "#fff", borderRadius: 16, padding: 22, border: `1px solid ${C.lime}`, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Finish setting up your account</div>
         <div style={{ fontSize: 12.5, color: "#c3ccd8", marginBottom: 14 }}>Your mobile is verified. Add your name and email to continue — we use them for order updates, invoices and receipts.</div>
         {err && <div style={{ fontSize: 12, color: "#ffb3b3", marginBottom: 10 }}>{err}</div>}
         <input autoComplete="name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} style={fld} />
         <input type="email" autoComplete="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)} style={fld} />
         <input type="password" autoComplete="new-password" placeholder="Set a password (optional)" value={password} onChange={(e) => setPassword(e.target.value)} style={fld} />
-        <button onClick={save} disabled={!canSave} style={{ width: "100%", background: C.lime, color: "#0E1726", border: "none", borderRadius: 8, padding: "10px 12px", fontWeight: 700, cursor: canSave ? "pointer" : "default", fontSize: 14, opacity: canSave ? 1 : 0.6 }}>
+        <button onClick={save} disabled={!canSave} style={{ width: "100%", background: C.lime, color: "#17160F", border: "none", borderRadius: 8, padding: "10px 12px", fontWeight: 700, cursor: canSave ? "pointer" : "default", fontSize: 14, opacity: canSave ? 1 : 0.6 }}>
           {busy ? "Saving…" : "Save & continue"}
         </button>
       </div>
@@ -319,7 +319,7 @@ function ProSetupPopup() {
   return (
     <div style={{
       position: "fixed", right: 20, bottom: 20, zIndex: 1000, width: 300,
-      background: "#0E1726", color: "#fff", borderRadius: 14, padding: 16,
+      background: "#17160F", color: "#fff", borderRadius: 14, padding: 16,
       boxShadow: "0 12px 40px rgba(0,0,0,0.28)", border: `1px solid ${C.lime}`,
     }}>
       <button onClick={dismiss} aria-label="Close" style={{ position: "absolute", top: 8, right: 10, background: "none", border: "none", color: "#8a93a3", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
@@ -327,7 +327,7 @@ function ProSetupPopup() {
         <div style={{ fontSize: 13.5, paddingRight: 8 }}>
           🎉 Thanks! Our team will reach out to you shortly to set up your store.
           <div style={{ marginTop: 12 }}>
-            <button onClick={dismiss} style={{ background: C.lime, color: "#0E1726", border: "none", borderRadius: 8, padding: "7px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Got it</button>
+            <button onClick={dismiss} style={{ background: C.lime, color: "#17160F", border: "none", borderRadius: 8, padding: "7px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Got it</button>
           </div>
         </div>
       ) : (
@@ -336,7 +336,7 @@ function ProSetupPopup() {
           <div style={{ fontSize: 12.5, color: "#c3ccd8", marginBottom: 12 }}>
             Our professional team will build your storefront for you — branding, products and go-live. Just <strong style={{ color: "#fff" }}>₹499</strong>.
           </div>
-          <button onClick={send} disabled={busy} style={{ width: "100%", background: C.lime, color: "#0E1726", border: "none", borderRadius: 8, padding: "9px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13.5, opacity: busy ? 0.6 : 1 }}>
+          <button onClick={send} disabled={busy} style={{ width: "100%", background: C.lime, color: "#17160F", border: "none", borderRadius: 8, padding: "9px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13.5, opacity: busy ? 0.6 : 1 }}>
             {busy ? "Sending…" : "Yes, set it up for me"}
           </button>
         </>

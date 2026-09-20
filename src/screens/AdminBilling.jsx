@@ -18,7 +18,7 @@ export default function AdminBilling() {
       <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
         {[["invoices", "Invoices"], ["payouts", "Payouts"], ["searchplans", "Search plans"]].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
-            style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#C8FF3D" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
+            style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#34C08A" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
         ))}
       </div>
       {tab === "invoices" ? <Invoices /> : tab === "payouts" ? <Payouts /> : <SearchPlans />}
@@ -47,7 +47,7 @@ function Payouts() {
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {P.map(([s, label]) => (
           <button key={s || "all"} onClick={() => setStatus(s)}
-            style={{ border: status === s ? "1px solid #16361b" : "1px solid #d4d9e3", background: status === s ? "#16361b" : "#fff", color: status === s ? "#C8FF3D" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>{label}</button>
+            style={{ border: status === s ? "1px solid #16361b" : "1px solid #d4d9e3", background: status === s ? "#16361b" : "#fff", color: status === s ? "#34C08A" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>{label}</button>
         ))}
       </div>
       <ErrorNote error={error} />
@@ -105,7 +105,7 @@ function Invoices() {
       <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
         {FILTERS.map(([s, label]) => (
           <button key={s || "all"} onClick={() => setStatus(s)}
-            style={{ border: status === s ? "1px solid #16361b" : "1px solid #d4d9e3", background: status === s ? "#16361b" : "#fff", color: status === s ? "#C8FF3D" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>
+            style={{ border: status === s ? "1px solid #16361b" : "1px solid #d4d9e3", background: status === s ? "#16361b" : "#fff", color: status === s ? "#34C08A" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>
             {label}
           </button>
         ))}
@@ -174,7 +174,7 @@ function SearchPlans() {
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {P.map(([s, label]) => (
           <button key={s || "await"} onClick={() => setStatus(s)}
-            style={{ border: status === s ? "1px solid #16361b" : "1px solid #d4d9e3", background: status === s ? "#16361b" : "#fff", color: status === s ? "#C8FF3D" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>{label}</button>
+            style={{ border: status === s ? "1px solid #16361b" : "1px solid #d4d9e3", background: status === s ? "#16361b" : "#fff", color: status === s ? "#34C08A" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12, cursor: "pointer" }}>{label}</button>
         ))}
       </div>
       <ErrorNote error={error} />

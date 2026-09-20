@@ -42,7 +42,7 @@ export function Card({ children, style }) {
 }
 
 const badgeColors = {
-  active: ["#16361b", "#C8FF3D"], approved: ["#16302f", "#7DC4FF"],
+  active: ["#16361b", "#34C08A"], approved: ["#16302f", "#7DC4FF"],
   pending: ["#2e2713", "#F6B45A"], expired: ["#321717", "#FF6B6B"],
   rejected: ["#321717", "#FF6B6B"], paused: ["#2a2f3a", "#93A1B8"],
   draft: ["#eef1f6", "#6b7688"],
@@ -59,7 +59,7 @@ export function Badge({ status }) {
 export function Btn({ children, onClick, tone = "primary", disabled, type = "button", small }) {
   const tones = {
     primary: { bg: C.ink, fg: "#fff" },
-    lime: { bg: C.lime, fg: "#0E1726" },
+    lime: { bg: C.lime, fg: "#17160F" },
     ghost: { bg: "transparent", fg: "#1b2230", border: "1px solid #d4d9e3" },
     danger: { bg: "#fff", fg: "#c0392b", border: "1px solid #e4b7b1" },
   };

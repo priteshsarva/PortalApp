@@ -157,7 +157,7 @@ function FeesRow({ site, plans = [] }) {
         <option value="platform">Platform</option>
       </select>
       {site.has_wholesale && <span style={{ color: "#8a6100" }}>(wholesale → forced platform)</span>}
-      <button onClick={save} style={{ border: "1px solid #16361b", background: "#16361b", color: "#C8FF3D", borderRadius: 6, padding: "4px 12px", fontSize: 12, cursor: "pointer" }}>Save</button>
+      <button onClick={save} style={{ border: "1px solid #16361b", background: "#16361b", color: "#34C08A", borderRadius: 6, padding: "4px 12px", fontSize: 12, cursor: "pointer" }}>Save</button>
       {msg && <span style={{ color: msg.startsWith("✓") ? "#2c6e2c" : "#b23a48" }}>{msg}</span>}
     </div>
     </>

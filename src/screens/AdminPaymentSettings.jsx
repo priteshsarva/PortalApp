@@ -151,7 +151,7 @@ export default function AdminPaymentSettings() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <strong style={{ fontSize: 15 }}>{p.label || id}</strong>
-                    {active && <Pill bg="#16361b" fg="#C8FF3D">Live</Pill>}
+                    {active && <Pill bg="#16361b" fg="#34C08A">Live</Pill>}
                     {p.enabled ? <Pill bg="#16302f" fg="#7DC4FF">Enabled</Pill> : <Pill>Disabled</Pill>}
                     {!p.hasKey && <Pill bg="#2e2713" fg="#F6B45A">No key</Pill>}
                   </div>

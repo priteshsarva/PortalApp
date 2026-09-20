@@ -39,7 +39,7 @@ function ApprovedView({ me, status }) {
         <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
           {[["listings", "My listings"], ["sales", "Sales"]].map(([k, label]) => (
             <button key={k} onClick={() => setTab(k)}
-              style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#C8FF3D" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
+              style={{ border: tab === k ? "1px solid #16361b" : "1px solid #d4d9e3", background: tab === k ? "#16361b" : "#fff", color: tab === k ? "#34C08A" : "#42505f", padding: "5px 14px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>{label}</button>
           ))}
         </div>
       )}
@@ -154,7 +154,7 @@ function ApplyForm({ onDone }) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {PRIMARY_CATS.map((c) => (
               <button key={c} type="button" onClick={() => toggleCat(c)}
-                style={{ textTransform: "capitalize", border: f.categories.includes(c) ? "1px solid #16361b" : "1px solid #d4d9e3", background: f.categories.includes(c) ? "#16361b" : "#fff", color: f.categories.includes(c) ? "#C8FF3D" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>
+                style={{ textTransform: "capitalize", border: f.categories.includes(c) ? "1px solid #16361b" : "1px solid #d4d9e3", background: f.categories.includes(c) ? "#16361b" : "#fff", color: f.categories.includes(c) ? "#34C08A" : "#42505f", padding: "5px 12px", borderRadius: 999, fontSize: 12.5, cursor: "pointer" }}>
                 {c}
               </button>
             ))}

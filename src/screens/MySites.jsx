@@ -58,7 +58,7 @@ export default function MySites() {
 
               {/* key row */}
               <div style={{ padding: "0 16px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-                <code style={{ flex: 1, background: "#0E1726", color: "#C8FF3D", padding: "8px 12px", borderRadius: 9, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis" }}>
+                <code style={{ flex: 1, background: "#17160F", color: "#34C08A", padding: "8px 12px", borderRadius: 9, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis" }}>
                   {e.enrollment_key}
                 </code>
                 <Btn small tone="ghost" onClick={() => copyKey(e.enrollment_key)}>

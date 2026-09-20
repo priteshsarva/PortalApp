@@ -28,7 +28,7 @@ export default function Notifications() {
           {items.map((n) => {
             const unread = !seenBefore || new Date(n.created_at) > new Date(seenBefore);
             return (
-              <Card key={n.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", borderLeft: unread ? "3px solid #C8FF3D" : "3px solid transparent" }}>
+              <Card key={n.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", borderLeft: unread ? "3px solid #34C08A" : "3px solid transparent" }}>
                 <div style={{ width: 34, height: 34, borderRadius: 8, background: "#f2f4f8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Bell size={16} color="#6b7688" />
                 </div>
