@@ -101,6 +101,7 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [unread, setUnread] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [adminView, setAdminView] = useState("admin"); // admins can switch to the client portal
   const mobile = useIsMobile();
 
   // unread notification count (vs the client-side last-seen timestamp)
@@ -117,7 +118,7 @@ export default function App() {
   useEffect(() => {
     if (!getToken()) { setBooting(false); return; }
     api.me()
-      .then((r) => { const u = r.user || r; setUser(u); setNav(u.role === "admin" ? "queue" : "dashboard"); })
+      .then((r) => { const u = r.user || r; setUser(u); setAdminView("admin"); setNav(u.role === "admin" ? "queue" : "dashboard"); })
       .catch(() => setToken(""))
       .finally(() => setBooting(false));
   }, []);
@@ -125,19 +126,27 @@ export default function App() {
   if (booting) return <div style={{ minHeight: "100vh", background: C.ink }} />;
   // Logged-out entry point is the public catalogue search; "Sign in" swaps to Login.
   if (!user) {
-    const onAuthed = (u) => { setUser(u); setShowLogin(false); setNav(u.role === "admin" ? "queue" : "dashboard"); };
+    const onAuthed = (u) => { setUser(u); setShowLogin(false); setAdminView("admin"); setNav(u.role === "admin" ? "queue" : "dashboard"); };
     return showLogin
       ? <Login onLogin={onAuthed} onBack={() => setShowLogin(false)} />
       : <SearchLanding onSignedIn={onAuthed} onSignIn={() => setShowLogin(true)} />;
   }
 
   const role = user.role === "admin" ? "admin" : "client";
-  const items = role === "admin" ? adminNav : clientNav;
+  const isAdmin = role === "admin";
+  const view = isAdmin ? adminView : "client";   // an admin can toggle to the client portal
+  const items = view === "admin" ? adminNav : clientNav;
 
   function signOut() { setToken(""); setUser(null); }
+  function toggleView() {
+    const next = view === "admin" ? "client" : "admin";
+    setAdminView(next);
+    setNav(next === "admin" ? "queue" : "dashboard");
+    setDrawerOpen(false);
+  }
 
   function render() {
-    if (role === "client") {
+    if (view === "client") {
       switch (nav) {
         case "dashboard": return <Dashboard me={user} />;
         case "sites": return <MySites />;
@@ -207,8 +216,14 @@ export default function App() {
       </nav>
 
       <div style={{ marginTop: "auto", paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+        {isAdmin && (
+          <button onClick={toggleView}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", boxSizing: "border-box", background: view === "admin" ? "transparent" : C.lime, color: view === "admin" ? C.text : C.ink, border: `1px solid ${view === "admin" ? C.line : C.lime}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 12 }}>
+            {view === "admin" ? "View client portal →" : "← Back to admin panel"}
+          </button>
+        )}
         <div style={{ fontSize: 12, color: C.dim, padding: "0 6px 10px" }}>
-          {user.email} · <span style={{ color: role === "admin" ? C.lime : C.sky }}>{role}</span>
+          {user.email} · <span style={{ color: role === "admin" ? C.lime : C.sky }}>{role}{isAdmin && view === "client" ? " · client view" : ""}</span>
         </div>
         <button onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", color: C.dim, cursor: "pointer", fontSize: 13, padding: "0 6px" }}>
           <LogOut size={16} /> Sign out

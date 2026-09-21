@@ -86,10 +86,16 @@ export default function Login({ onLogin, onBack }) {
         {isOtp ? (
           <>
             <PhoneVerify onAuthed={(r) => onLogin(r.user)} cta="Verify & continue" />
-            <button onClick={() => { setMode("login"); setError(null); }}
-              style={{ marginTop: 16, background: "none", border: "none", color: "#6b7688", fontSize: 12.5, cursor: "pointer" }}>
-              ← Use email &amp; password instead
-            </button>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+              <button onClick={() => { setMode("login"); setError(null); }}
+                style={{ background: "none", border: "none", color: "#6b7688", fontSize: 12.5, cursor: "pointer", padding: 0 }}>
+                ← Email &amp; password
+              </button>
+              <button onClick={goSignup}
+                style={{ background: "none", border: "none", color: "#3b6fd8", fontSize: 12.5, cursor: "pointer", padding: 0 }}>
+                Sign up with email
+              </button>
+            </div>
           </>
         ) : (
         <>
@@ -157,7 +163,7 @@ export default function Login({ onLogin, onBack }) {
           </div>
         </form>
 
-        <button onClick={() => (isSignup ? (setMode("login"), setError(null)) : goSignup())}
+        <button onClick={() => (isSignup ? (setMode("login"), setError(null)) : (setMode("otp"), setError(null)))}
           style={{ marginTop: 16, background: "none", border: "none", color: "#6b7688", fontSize: 12.5, cursor: "pointer" }}>
           {isSignup ? "Have an account? Sign in" : "Need an account? Sign up"}
         </button>
