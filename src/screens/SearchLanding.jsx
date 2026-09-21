@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Search, ExternalLink, KeyRound, PlusCircle, X } from "lucide-react";
 import { api, getToken } from "../api.js";
+import { useIsMobile } from "../ui.jsx";
 import PhoneVerify from "../components/PhoneVerify.jsx";
 
 const C = { ink: "#17160F", lime: "#34C08A", paper: "#F6F5F1" };
@@ -32,6 +33,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
   const [me, setMe] = useState(null);              // set after OTP signup this session
   const [modal, setModal] = useState("");          // "" | signup | plan | source
   const signedIn = !!getToken();
+  const isPhone = useIsMobile(600);
 
   useEffect(() => { api.searchSources().then((r) => setSources(r.sources || [])).catch(() => {}); }, []);
 
@@ -166,7 +168,7 @@ export default function SearchLanding({ onSignedIn, onSignIn }) {
             <div style={{ textAlign: "center", color: "#9aa3b2", padding: 40 }}>No products match — try another search.</div>
           ) : (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isPhone ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(190px, 1fr))", gap: isPhone ? 10 : 14 }}>
                 {items.map((p) => (
                   <div key={`${p.category}-${p.productId}`} onClick={() => openProduct(p)} title="Open supplier page"
                     style={{ border: "1px solid #e6e9f0", borderRadius: 12, overflow: "hidden", background: "#fff", display: "flex", flexDirection: "column", cursor: "pointer" }}>

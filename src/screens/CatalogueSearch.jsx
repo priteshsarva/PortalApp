@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Search, ExternalLink } from "lucide-react";
 import { api } from "../api.js";
-import { C, PageHead, Card, Spinner, ErrorNote, Empty, inputStyle } from "../ui.jsx";
+import { C, PageHead, Card, Spinner, ErrorNote, Empty, inputStyle, useIsMobile } from "../ui.jsx";
 
 const inr = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
@@ -12,6 +12,7 @@ const SORTS = [["newest", "Newest"], ["price_asc", "Price: low to high"], ["pric
 const lbl = { fontSize: 11, color: "#6b7688", marginBottom: 5 };
 
 export default function CatalogueSearch() {
+  const isPhone = useIsMobile(600);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
   const [stock, setStock] = useState("");     // "" all | in | out
@@ -120,7 +121,7 @@ export default function CatalogueSearch() {
       <ErrorNote error={error} />
       {loading && items.length === 0 ? <Spinner /> : items.length === 0 ? <Card><Empty msg="No products match." /></Card> : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isPhone ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(200px, 1fr))", gap: isPhone ? 10 : 14 }}>
             {items.map((p) => (
               <div key={`${p.category}-${p.productId}`} style={{ border: "1px solid #e6e9f0", borderRadius: 12, overflow: "hidden", background: "#fff", display: "flex", flexDirection: "column" }}>
                 <div style={{ aspectRatio: "1/1", background: "#f4f5f8", position: "relative" }}>

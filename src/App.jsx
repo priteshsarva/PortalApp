@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   LayoutDashboard, Globe, Tags, PlusCircle, Plug, Inbox, ShieldCheck, Users,
   Megaphone, ScrollText, BarChart3, Search, Store, Receipt, LogOut, KeyRound, Database,
-  Mail, CreditCard, LayoutTemplate, ClipboardList, Bell, Menu, LayoutGrid, Smartphone,
+  Mail, CreditCard, LayoutTemplate, ClipboardList, Bell, Menu, LayoutGrid, Smartphone, MessageCircle,
 } from "lucide-react";
 import { api, getToken, setToken } from "./api.js";
 import { C, Stub, useIsMobile } from "./ui.jsx";
@@ -35,6 +35,7 @@ import Wallet from "./screens/Wallet.jsx";
 import AdminShipments from "./screens/AdminShipments.jsx";
 import AdminWallet from "./screens/AdminWallet.jsx";
 import AdminLogs from "./screens/AdminLogs.jsx";
+import AdminWhatsApp from "./screens/AdminWhatsApp.jsx";
 import AdminMobiles from "./screens/AdminMobiles.jsx";
 import LayoutGallery from "./screens/LayoutGallery.jsx";
 import WelcomeTour from "./Tour.jsx";
@@ -76,6 +77,7 @@ const adminNav = [
   ["enrollAdmin", "Plugin sign-ups", ShieldCheck],
   ["email", "Email settings", Mail],
   ["payments", "Payments", CreditCard],
+  ["whatsapp", "WhatsApp bot", MessageCircle],
   ["logs", "Logs", ScrollText],
   ["notifications", "Notifications", Bell],
   // Hidden until built: "announce" (announcements), "audit" (audit-log viewer).
@@ -180,6 +182,7 @@ export default function App() {
       case "mobiles": return <AdminMobiles />;
       case "email": return <AdminEmailSettings />;
       case "payments": return <AdminPaymentSettings />;
+      case "whatsapp": return <AdminWhatsApp />;
       case "logs": return <AdminLogs />;
       case "notifications": return <Notifications />;
       default: return null;
