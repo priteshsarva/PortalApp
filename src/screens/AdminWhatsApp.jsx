@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { api } from "../api.js";
 import { PageHead, Card, Btn, Field, Modal, Spinner, ErrorNote, Empty, inputStyle, fmtDate } from "../ui.jsx";
 
-const TABS = [["faqs", "Saved answers"], ["pending", "Waiting for you"], ["answered", "Answered"], ["skipped", "Skipped"]];
+const TABS = [["faqs", "Saved answers"], ["pending", "Waiting for you"], ["answered", "Replies sent"], ["skipped", "Skipped"], ["business", "Extra notes (AI)"]];
 const LANGS = [["hinglish", "Hinglish"], ["en", "English"], ["hi", "हिंदी"]];
 const STATE_TEXT = { connected: "🟢 Connected", qr: "🟡 Waiting for QR scan", reconnecting: "🟡 Reconnecting…", logged_out: "🔴 Logged out — scan the new QR", unknown: "⚪ Bot hasn't reported yet" };
 
@@ -26,6 +26,9 @@ function BotStatus() {
     <Card style={{ marginBottom: 16 }}>
       <div style={{ fontWeight: 700 }}>{STATE_TEXT[st.state] || st.state}</div>
       {st.at && <div style={{ fontSize: 12, color: "#9aa3b2" }}>updated {fmtDate(st.at)}</div>}
+      {st.ai && <div style={{ fontSize: 12, color: "#9aa3b2", marginTop: 4 }}>
+        AI: {st.ai.enabled ? `on — ${st.ai.n || 0}/${st.ai.max} calls used today` : "off (no GEMINI_API_KEY on the backend)"}
+      </div>}
       {qr && (
         <div style={{ marginTop: 12 }}>
           <img src={qr} alt="WhatsApp link QR" width={260} height={260} />
@@ -86,6 +89,38 @@ function TestMatch() {
   );
 }
 
+// Notes added on top of the main guide (portal/kartify-guide.md on the backend).
+// The assistant says nothing outside the guide, these notes, your saved answers
+// and the client's own account data.
+function BusinessInfo() {
+  const [notes, setNotes] = useState(null);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState(null);
+  useEffect(() => { api.adminWaBusiness().then((r) => setNotes(r.notes || "")).catch(setErr); }, []);
+  const save = async () => {
+    setErr(null); setSaved(false);
+    try { await api.adminWaSaveBusiness(notes); setSaved(true); } catch (e) { setErr(e); }
+  };
+  if (notes === null) return <Spinner />;
+  return (
+    <Card>
+      <ErrorNote error={err} />
+      <p style={{ fontSize: 13, color: "#6b7688", marginTop: 0 }}>
+        The assistant already knows the full Kartify guide (what we do, onboarding, running a store, plans, common questions).
+        Add anything extra or changed here — a new price, an offer that ended, something it should never say.
+        Plain sentences work best.
+      </p>
+      <textarea rows={14} style={{ ...inputStyle, fontFamily: "inherit", lineHeight: 1.5 }}
+        placeholder={"e.g. From October the Standard plan includes 2 custom domains.\ne.g. Never promise same-day delivery in Kerala."}
+        value={notes} onChange={(e) => { setNotes(e.target.value); setSaved(false); }} />
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
+        <Btn onClick={save}>Save</Btn>
+        {saved && <span style={{ color: "#2c6e2c", fontSize: 13 }}>Saved ✓</span>}
+      </div>
+    </Card>
+  );
+}
+
 export default function AdminWhatsApp() {
   const [tab, setTab] = useState("faqs");
   const [rows, setRows] = useState(null);
@@ -94,6 +129,7 @@ export default function AdminWhatsApp() {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    if (tab === "business") return;
     setRows(null); setError(null);
     (tab === "faqs" ? api.adminWaFaqs().then((r) => r.faqs) : api.adminWaQuestions(tab).then((r) => r.questions))
       .then(setRows).catch(setError);
@@ -118,7 +154,7 @@ export default function AdminWhatsApp() {
       </div>
       {tab === "faqs" && <TestMatch />}
       <ErrorNote error={error} />
-      {!rows ? <Spinner /> : rows.length === 0 ? <Card><Empty msg="Nothing here yet." /></Card> : tab === "faqs" ? (
+      {tab === "business" ? <BusinessInfo /> : !rows ? <Spinner /> : rows.length === 0 ? <Card><Empty msg="Nothing here yet." /></Card> : tab === "faqs" ? (
         <div style={{ display: "grid", gap: 10 }}>
           {rows.map((f) => (
             <Card key={f.id}>
@@ -138,9 +174,13 @@ export default function AdminWhatsApp() {
         <div style={{ display: "grid", gap: 10 }}>
           {rows.map((q) => (
             <Card key={q.id}>
-              <div style={{ fontSize: 12, color: "#9aa3b2" }}>#{q.id} · {q.name || "Unknown"} · +{q.phone}{q.email ? ` · ${q.email}` : ""} · {q.lang} · {fmtDate(q.created_at)}</div>
+              <div style={{ fontSize: 12, color: "#9aa3b2" }}>
+                #{q.id} · {q.name || "Unknown"} · +{q.phone}{q.email ? ` · ${q.email}` : ""} · {q.lang} · {fmtDate(q.created_at)}
+                {q.source === "ai" && <span style={{ background: "#eef1f6", color: "#42505f", borderRadius: 999, padding: "2px 8px", marginLeft: 6, fontWeight: 700 }}>AI answered</span>}
+              </div>
               <div style={{ fontSize: 13.5, margin: "6px 0" }}>“{q.text}”</div>
-              {q.answer && <div style={{ fontSize: 13, color: "#2c6e2c", whiteSpace: "pre-wrap" }}>↳ {q.answer} (answer #{q.faq_id})</div>}
+              {q.answer && <div style={{ fontSize: 13, color: "#2c6e2c", whiteSpace: "pre-wrap" }}>↳ {q.answer}{q.faq_id ? ` (answer #${q.faq_id})` : ""}</div>}
+              {q.source === "ai" && <div style={{ fontSize: 12, color: "#9aa3b2", marginTop: 4 }}>Wrong? On WhatsApp send: #{q.id} fix &lt;better wording&gt;</div>}
             </Card>
           ))}
         </div>

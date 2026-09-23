@@ -14,7 +14,10 @@ const inr = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const input = { width: "100%", boxSizing: "border-box", padding: "11px 13px", border: "1px solid #d8dee8", borderRadius: 10, fontSize: 14, outline: "none" };
 
 export default function SearchLanding({ onSignedIn, onSignIn }) {
-  const [q, setQ] = useState("");
+  // ?q=... so a WhatsApp link like app.thekartify.com/?q=nike opens on that search
+  const [q, setQ] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("q") || ""; } catch { return ""; }
+  });
   const [category, setCategory] = useState("");
   const [stock, setStock] = useState("in");        // default: show available products
   const [sort, setSort] = useState("newest");
