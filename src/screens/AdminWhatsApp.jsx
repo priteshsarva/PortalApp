@@ -4,7 +4,8 @@ import QRCode from "qrcode";
 import { api } from "../api.js";
 import { PageHead, Card, Btn, Field, Modal, Spinner, ErrorNote, Empty, inputStyle, fmtDate } from "../ui.jsx";
 
-const TABS = [["faqs", "Saved answers"], ["pending", "Waiting for you"], ["answered", "Replies sent"], ["skipped", "Skipped"], ["business", "Extra notes (AI)"]];
+const TABS = [["leads", "Leads"], ["faqs", "Saved answers"], ["pending", "Waiting for you"], ["answered", "Replies sent"], ["skipped", "Skipped"], ["business", "Extra notes (AI)"]];
+const SCORE_STYLE = { hot: ["#fdecea", "#c0392b"], warm: ["#fff6e5", "#8a6100"], cold: ["#eef1f6", "#6b7688"] };
 const LANGS = [["hinglish", "Hinglish"], ["en", "English"], ["hi", "हिंदी"]];
 const STATE_TEXT = { connected: "🟢 Connected", qr: "🟡 Waiting for QR scan", reconnecting: "🟡 Reconnecting…", logged_out: "🔴 Logged out — scan the new QR", unknown: "⚪ Bot hasn't reported yet" };
 
@@ -131,7 +132,9 @@ export default function AdminWhatsApp() {
   useEffect(() => {
     if (tab === "business") return;
     setRows(null); setError(null);
-    (tab === "faqs" ? api.adminWaFaqs().then((r) => r.faqs) : api.adminWaQuestions(tab).then((r) => r.questions))
+    (tab === "faqs" ? api.adminWaFaqs().then((r) => r.faqs)
+      : tab === "leads" ? api.adminWaLeads().then((r) => r.leads)
+      : api.adminWaQuestions(tab).then((r) => r.questions))
       .then(setRows).catch(setError);
   }, [tab, tick]);
 
@@ -154,7 +157,31 @@ export default function AdminWhatsApp() {
       </div>
       {tab === "faqs" && <TestMatch />}
       <ErrorNote error={error} />
-      {tab === "business" ? <BusinessInfo /> : !rows ? <Spinner /> : rows.length === 0 ? <Card><Empty msg="Nothing here yet." /></Card> : tab === "faqs" ? (
+      {tab === "business" ? <BusinessInfo /> : !rows ? <Spinner /> : tab === "leads" ? (
+        rows.length === 0 ? <Card><Empty msg="No leads yet — they appear as the assistant talks to people." /></Card> : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {rows.map((l) => {
+              const [bg, fg] = SCORE_STYLE[l.score] || SCORE_STYLE.cold;
+              const facts = [l.business, l.city, l.sells, l.shops && `${l.shops} shop`, l.online_already && `online: ${l.online_already}`,
+                             l.suppliers && `supplier: ${l.suppliers}`, l.socials, l.email, l.budget_hint].filter(Boolean);
+              return (
+                <Card key={l.phone}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {l.name || "Unknown"} <a href={`https://wa.me/${l.phone}`} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13, color: "#2c6e2c" }}>+{l.phone}</a>
+                    </div>
+                    <span style={{ background: bg, color: fg, fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 999, textTransform: "uppercase" }}>{l.score}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "#55606f", margin: "6px 0" }}>{facts.join(" · ") || "nothing captured yet"}</div>
+                  {l.score_reason && <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>{l.score_reason}</div>}
+                  {l.intent && <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>Wants: {l.intent}</div>}
+                  <div style={{ fontSize: 11.5, color: "#c0c7d2", marginTop: 4 }}>updated {fmtDate(l.updated_at)}</div>
+                </Card>
+              );
+            })}
+          </div>
+        )
+      ) : rows.length === 0 ? <Card><Empty msg="Nothing here yet." /></Card> : tab === "faqs" ? (
         <div style={{ display: "grid", gap: 10 }}>
           {rows.map((f) => (
             <Card key={f.id}>

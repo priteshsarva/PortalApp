@@ -110,6 +110,7 @@ export const api = {
   adminWaSaveFaq: (id, body) => req(`/portal/admin/wa/faqs${id ? `/${id}` : ""}`, { method: id ? "PUT" : "POST", body }),
   adminWaDeleteFaq: (id) => req(`/portal/admin/wa/faqs/${id}`, { method: "DELETE" }),
   adminWaQuestions: (status) => req(`/portal/admin/wa/questions?status=${status}`),
+  adminWaLeads: (score) => req(`/portal/admin/wa/leads${score ? `?score=${score}` : ""}`),
   adminWaBusiness: () => req("/portal/admin/wa/business"),
   adminWaSaveBusiness: (notes) => req("/portal/admin/wa/business", { method: "PUT", body: { notes } }),
   adminWaTestMatch: (text) => req("/portal/admin/wa/test-match", { method: "POST", body: { text } }),

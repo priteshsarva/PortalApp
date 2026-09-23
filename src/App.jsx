@@ -36,6 +36,7 @@ import AdminShipments from "./screens/AdminShipments.jsx";
 import AdminWallet from "./screens/AdminWallet.jsx";
 import AdminLogs from "./screens/AdminLogs.jsx";
 import AdminWhatsApp from "./screens/AdminWhatsApp.jsx";
+import AskOnWhatsApp from "./components/AskOnWhatsApp.jsx";
 import AdminMobiles from "./screens/AdminMobiles.jsx";
 import LayoutGallery from "./screens/LayoutGallery.jsx";
 import WelcomeTour from "./Tour.jsx";
@@ -131,7 +132,10 @@ export default function App() {
     const onAuthed = (u) => { setUser(u); setShowLogin(false); setAdminView("admin"); setNav(u.role === "admin" ? "queue" : "dashboard"); };
     return showLogin
       ? <Login onLogin={onAuthed} onBack={() => setShowLogin(false)} />
-      : <SearchLanding onSignedIn={onAuthed} onSignIn={() => setShowLogin(true)} />;
+      : <>
+          <SearchLanding onSignedIn={onAuthed} onSignIn={() => setShowLogin(true)} />
+          <AskOnWhatsApp context="I want to know about starting my own online store." />
+        </>;
   }
 
   const role = user.role === "admin" ? "admin" : "client";
@@ -275,6 +279,7 @@ export default function App() {
       {role === "client" && !user.email && <CompleteProfileGate user={user} onDone={setUser} />}
       {role === "client" && user.email && <ProSetupPopup />}
       {role === "client" && <WelcomeTour setNav={setNav} />}
+      {role === "client" && <AskOnWhatsApp user={user} context="I need help with my store." />}
     </div>
   );
 }
