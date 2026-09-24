@@ -186,7 +186,10 @@ export default function AdminWhatsApp() {
           {rows.map((f) => (
             <Card key={f.id}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <div style={{ fontSize: 12, color: "#9aa3b2" }}>#{f.id} · used {f.hits}× · missing: {LANGS.filter(([l]) => !f[`answer_${l}`]).map(([, n]) => n).join(", ") || "none"}</div>
+                <div style={{ fontSize: 12, color: "#9aa3b2" }}>
+                  #{f.id} · used {f.hits}× · missing: {LANGS.filter(([l]) => !f[`answer_${l}`]).map(([, n]) => n).join(", ") || "none"}
+                  {f.source === "ai" && <span style={{ background: "#eef1f6", color: "#42505f", borderRadius: 999, padding: "2px 8px", marginLeft: 6, fontWeight: 700 }}>learned from chat</span>}
+                </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   <Btn small tone="ghost" onClick={() => setEditing(f)}>Edit</Btn>
                   <Btn small tone="danger" onClick={() => del(f.id)}>Delete</Btn>
