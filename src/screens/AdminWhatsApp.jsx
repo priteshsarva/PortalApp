@@ -3,9 +3,32 @@ import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { api } from "../api.js";
 import { PageHead, Card, Btn, Field, Modal, Spinner, ErrorNote, Empty, inputStyle, fmtDate } from "../ui.jsx";
+import { MessageCircle } from "lucide-react";
 
 const TABS = [["leads", "Leads"], ["faqs", "Saved answers"], ["pending", "Waiting for you"], ["answered", "Replies sent"], ["skipped", "Skipped"], ["business", "Extra notes (AI)"]];
 const SCORE_STYLE = { hot: ["#fdecea", "#c0392b"], warm: ["#fff6e5", "#8a6100"], cold: ["#eef1f6", "#6b7688"] };
+const STAGE_LABEL = { ready: "✅ ready to build", details: "📝 giving details", demo_yes: "👍 wants the demo",
+  demo_offered: "🎬 demo offered", talking: "💬 talking", new: "🆕 new", not_interested: "❌ not interested" };
+
+// The opener is written for where the conversation actually stopped, so picking a lead back
+// up is one tap — WhatsApp opens with the message ready and you only press send.
+function continueText(l) {
+  const who = l.name ? ` ${l.name} ji` : " ji";
+  const shop = l.store_name || l.business;
+  switch (l.stage) {
+    case "ready":
+    case "details":
+      return `Namaste${who}! ${shop ? `${shop} ka` : "Aapka"} demo store ready karne ja rahe hain — bas confirm kar dijiye, aaj hi link bhej dete hain.`;
+    case "demo_yes":
+      return `Namaste${who}! Aapke naam se free demo store banane ke liye bas do cheezein chahiye — store ka naam aur aap kya bechte ho. Bata dijiye, abhi bana dete hain.`;
+    case "demo_offered":
+      return `Namaste${who}! Socha ek baar aur pooch lein — aapke naam se free demo store bana ke dikha dein? Dekh ke hi batana, koi charge nahi.`;
+    case "not_interested":
+      return `Namaste${who}! Bas yaad dilane ke liye — jab bhi online store ka mann ho, hum yahin hain. thekartify.com par dekh lijiyega.`;
+    default:
+      return `Namaste${who}! Kartify se baat hui thi${shop ? ` ${shop} ke baare me` : ""}. Aapki dukaan ke liye ready online store bana kar dete hain — ek baar dekhna chahenge?`;
+  }
+}
 const LANGS = [["hinglish", "Hinglish"], ["en", "English"], ["hi", "हिंदी"]];
 const STATE_TEXT = { connected: "🟢 Connected", qr: "🟡 Waiting for QR scan", reconnecting: "🟡 Reconnecting…", logged_out: "🔴 Logged out — scan the new QR", unknown: "⚪ Bot hasn't reported yet" };
 
@@ -175,7 +198,29 @@ export default function AdminWhatsApp() {
                   <div style={{ fontSize: 13, color: "#55606f", margin: "6px 0" }}>{facts.join(" · ") || "nothing captured yet"}</div>
                   {l.score_reason && <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>{l.score_reason}</div>}
                   {l.intent && <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>Wants: {l.intent}</div>}
-                  <div style={{ fontSize: 11.5, color: "#c0c7d2", marginTop: 4 }}>updated {fmtDate(l.updated_at)}</div>
+                  {(l.store_name || l.supplier_links || l.whatsapp_for_orders || l.own_domain) && (
+                    <div style={{ fontSize: 12.5, color: "#55606f", marginTop: 4 }}>
+                      For their store: {[l.store_name && `“${l.store_name}”`, l.whatsapp_for_orders && `orders on ${l.whatsapp_for_orders}`,
+                        l.supplier_links && `supplier ${l.supplier_links}`, l.own_domain].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                  {l.demo_slug && (
+                    <div style={{ fontSize: 12.5, marginTop: 4 }}>
+                      🏪 <a href={`https://${l.demo_slug}.thekartify.com`} target="_blank" rel="noreferrer" style={{ color: "#2c6e2c" }}>{l.demo_slug}.thekartify.com</a>
+                      {l.demo_expires_at && <span style={{ color: "#9aa3b2" }}> · demo till {fmtDate(l.demo_expires_at)}</span>}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
+                    <a href={`https://wa.me/${l.phone}?text=${encodeURIComponent(continueText(l))}`} target="_blank" rel="noreferrer"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#25D366", color: "#0b2b16",
+                        fontWeight: 700, fontSize: 13, padding: "8px 14px", borderRadius: 9, textDecoration: "none" }}>
+                      <MessageCircle size={15} /> Continue on WhatsApp
+                    </a>
+                    <span style={{ fontSize: 12, color: "#6b7688" }}>{STAGE_LABEL[l.stage] || l.stage}</span>
+                    {l.outcome && <span style={{ fontSize: 12, fontWeight: 700, color: l.outcome === "won" ? "#2c6e2c" : "#9aa3b2" }}>
+                      {l.outcome === "won" ? "🏆 won" : "lost"}</span>}
+                    <span style={{ fontSize: 11.5, color: "#c0c7d2", marginLeft: "auto" }}>updated {fmtDate(l.updated_at)}</span>
+                  </div>
                 </Card>
               );
             })}
