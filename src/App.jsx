@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   LayoutDashboard, Globe, Tags, PlusCircle, Plug, Inbox, ShieldCheck, Users,
   Megaphone, ScrollText, BarChart3, Search, Store, Receipt, LogOut, KeyRound, Database,
-  Mail, CreditCard, LayoutTemplate, ClipboardList, Bell, Menu, LayoutGrid, Smartphone, MessageCircle,
+  Mail, CreditCard, LayoutTemplate, ClipboardList, Bell, Menu, LayoutGrid, Smartphone, MessageCircle, Tag,
 } from "lucide-react";
 import { api, getToken, setToken } from "./api.js";
 import { C, Stub, useIsMobile } from "./ui.jsx";
@@ -39,6 +39,7 @@ import AdminWhatsApp from "./screens/AdminWhatsApp.jsx";
 import AskOnWhatsApp from "./components/AskOnWhatsApp.jsx";
 import AdminMobiles from "./screens/AdminMobiles.jsx";
 import LayoutGallery from "./screens/LayoutGallery.jsx";
+import Pricing from "./screens/Pricing.jsx";
 import WelcomeTour from "./Tour.jsx";
 
 // Wholesale-seller feature (vendors listing their own products) is parked for now
@@ -56,6 +57,7 @@ const clientNav = [
   ["plugin", "Set up plugin", Plug],
   ["wholesale", "Sell wholesale", Store],
   ["wallet", "Wallet", CreditCard],
+  ["pricing", "Pricing", Tag],
   ["billing", "Billing", Receipt],
   ["notifications", "Notifications", Bell],
   // Hidden until built: "analytics" (per-store analytics live on each store),
@@ -163,6 +165,7 @@ export default function App() {
         case "plugin": return <PluginSetup />;
         case "search": return <CatalogueSearch />;
         case "billing": return <Billing />;
+        case "pricing": return <Pricing />;
         case "wholesale": return WHOLESALE_ENABLED ? <Wholesale /> : <ComingSoon title="Sell wholesale" note="List your own products for other stores to sell. We're putting the finishing touches on this — it'll be here soon." />;
         case "wallet": return <Wallet />;
         case "notifications": return <Notifications />;

@@ -10,9 +10,60 @@ const SCORE_STYLE = { hot: ["#fdecea", "#c0392b"], warm: ["#fff6e5", "#8a6100"],
 const STAGE_LABEL = { ready: "✅ ready to build", details: "📝 giving details", demo_yes: "👍 wants the demo",
   demo_offered: "🎬 demo offered", talking: "💬 talking", new: "🆕 new", not_interested: "❌ not interested" };
 
-// The opener is written for where the conversation actually stopped, so picking a lead back
-// up is one tap — WhatsApp opens with the message ready and you only press send.
-function continueText(l) {
+// Reopening a lead: the assistant reads THAT conversation and writes the message to send.
+// It's shown first so it can be edited — you send it yourself, from your own WhatsApp.
+function ContinueModal({ lead, onClose }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(true);
+  const [err, setErr] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  // The bot sends it, not this browser — the backend queues it and the bot picks it up.
+  const send = async () => {
+    setSending(true); setErr(null);
+    try { await api.adminWaSendLead(lead.phone, text.trim()); setSent(true); setTimeout(onClose, 1800); }
+    catch (e) { setErr(e); }
+    setSending(false);
+  };
+
+  const load = async (refresh) => {
+    setBusy(true); setErr(null);
+    try {
+      const r = await api.adminWaOpener(lead.phone, refresh);
+      setText(r.text || fallbackText(lead));
+      if (r.error) setErr(new Error(r.error));
+    } catch (e) { setErr(e); setText(fallbackText(lead)); }
+    setBusy(false);
+  };
+  useEffect(() => { load(false); /* eslint-disable-next-line */ }, [lead.phone]);
+
+  return (
+    <Modal title={`Message ${lead.name || "+" + lead.phone}`} onClose={onClose}>
+      <p style={{ fontSize: 12.5, color: "#6b7688", marginTop: 0 }}>
+        Written from this chat — their shop, what they said, and where it stopped. Edit anything, then send.
+      </p>
+      <ErrorNote error={err} />
+      <textarea rows={5} style={{ ...inputStyle, fontFamily: "inherit", lineHeight: 1.5 }}
+        value={busy ? "Writing a message from your chat…" : text} disabled={busy}
+        onChange={(e) => setText(e.target.value)} />
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <button onClick={send} disabled={busy || sending || sent || !text.trim()}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, background: sent ? "#2c6e2c" : "#25D366",
+            color: sent ? "#fff" : "#0b2b16", fontWeight: 700, fontSize: 13.5, padding: "9px 16px", borderRadius: 10,
+            border: "none", cursor: busy || sending || sent ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+          <MessageCircle size={15} /> {sent ? "Sent ✓" : sending ? "Sending…" : "Send from the bot"}
+        </button>
+        <Btn tone="ghost" onClick={() => load(true)} disabled={busy || sending || sent}>↻ Write another</Btn>
+        {sent && <span style={{ fontSize: 12.5, color: "#6b7688" }}>
+          The bot sends it within a few seconds and then handles their reply.</span>}
+      </div>
+    </Modal>
+  );
+}
+
+// Used only if the assistant can't be reached — never leaves the button dead.
+function fallbackText(l) {
   const who = l.name ? ` ${l.name} ji` : " ji";
   const shop = l.store_name || l.business;
   switch (l.stage) {
@@ -150,6 +201,7 @@ export default function AdminWhatsApp() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null); // faq object, {} for new
+  const [msgLead, setMsgLead] = useState(null);  // lead whose "continue" message is open
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -211,11 +263,11 @@ export default function AdminWhatsApp() {
                     </div>
                   )}
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
-                    <a href={`https://wa.me/${l.phone}?text=${encodeURIComponent(continueText(l))}`} target="_blank" rel="noreferrer"
+                    <button onClick={() => setMsgLead(l)}
                       style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#25D366", color: "#0b2b16",
-                        fontWeight: 700, fontSize: 13, padding: "8px 14px", borderRadius: 9, textDecoration: "none" }}>
+                        fontWeight: 700, fontSize: 13, padding: "8px 14px", borderRadius: 9, border: "none", cursor: "pointer" }}>
                       <MessageCircle size={15} /> Continue on WhatsApp
-                    </a>
+                    </button>
                     <span style={{ fontSize: 12, color: "#6b7688" }}>{STAGE_LABEL[l.stage] || l.stage}</span>
                     {l.outcome && <span style={{ fontSize: 12, fontWeight: 700, color: l.outcome === "won" ? "#2c6e2c" : "#9aa3b2" }}>
                       {l.outcome === "won" ? "🏆 won" : "lost"}</span>}
@@ -261,6 +313,7 @@ export default function AdminWhatsApp() {
         </div>
       )}
       {editing && <FaqModal faq={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); setTick((x) => x + 1); }} />}
+      {msgLead && <ContinueModal lead={msgLead} onClose={() => setMsgLead(null)} />}
     </div>
   );
 }

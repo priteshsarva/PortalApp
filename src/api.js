@@ -111,6 +111,8 @@ export const api = {
   adminWaDeleteFaq: (id) => req(`/portal/admin/wa/faqs/${id}`, { method: "DELETE" }),
   adminWaQuestions: (status) => req(`/portal/admin/wa/questions?status=${status}`),
   adminWaLeads: (score) => req(`/portal/admin/wa/leads${score ? `?score=${score}` : ""}`),
+  adminWaOpener: (phone, refresh) => req(`/portal/admin/wa/leads/${phone}/opener${refresh ? "?refresh=1" : ""}`),
+  adminWaSendLead: (phone, text) => req(`/portal/admin/wa/leads/${phone}/send`, { method: "POST", body: { text } }),
   adminWaBusiness: () => req("/portal/admin/wa/business"),
   adminWaSaveBusiness: (notes) => req("/portal/admin/wa/business", { method: "PUT", body: { notes } }),
   adminWaTestMatch: (text) => req("/portal/admin/wa/test-match", { method: "POST", body: { text } }),
