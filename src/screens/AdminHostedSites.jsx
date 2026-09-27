@@ -27,6 +27,16 @@ export default function AdminHostedSites() {
     act(id, api.adminDeleteHostedSite, id);
   }
 
+  // Hand a store built under the admin account to its real owner (demo -> client).
+  async function transfer(id, name) {
+    const email = prompt(`Transfer "${name}" to which client?\nEnter their Kartify account email:`);
+    if (!email || !email.trim()) return;
+    setBusy(id);
+    try { const r = await api.adminTransferHostedSite(id, email.trim()); alert(`✓ Transferred to ${r.owner_email}`); load(); }
+    catch (e) { alert(e.message); }
+    finally { setBusy(null); }
+  }
+
   return (
     <div>
       <PageHead title="Storefronts" sub="Every hosted, multi-tenant storefront across all vendors." />
@@ -93,6 +103,7 @@ export default function AdminHostedSites() {
                     finally { setBusy(null); }
                   }}>Verify domain</Btn>
                 )}
+                <Btn small tone="ghost" disabled={busy === s.id} onClick={() => transfer(s.id, s.store_name || s.slug)}>Transfer to client</Btn>
                 <Btn small tone="danger" disabled={busy === s.id} onClick={() => remove(s.id, s.store_name || s.slug)}>Delete</Btn>
               </div>
             </Card>

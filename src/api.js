@@ -176,6 +176,18 @@ export const api = {
     if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
     return data; // { files:[{url,key}], urls:[...] }
   },
+  uploadStorefrontImages: async (files) => {
+    const fd = new FormData();
+    Array.from(files).forEach((f) => fd.append("files", f));
+    const res = await fetch(BASE + "/portal/storefront/upload", {
+      method: "POST",
+      headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
+      body: fd,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+    return data; // { files:[{url,key}], urls:[...] }
+  },
 
   // ---- wholesale: admin ----
   adminWholesalers: (status) => req(`/portal/admin/wholesalers${status ? `?status=${encodeURIComponent(status)}` : ""}`),
@@ -292,6 +304,9 @@ export const api = {
   adminSiteAnalytics: (id, params) => req(`/portal/admin/hosted-sites/${id}/analytics${params ? `?${new URLSearchParams(params)}` : ""}`),
   adminUpdateHostedSite: (id, body) => req(`/portal/admin/hosted-sites/${id}`, { method: "PATCH", body }),
   adminDeleteHostedSite: (id) => req(`/portal/admin/hosted-sites/${id}`, { method: "DELETE" }),
+  adminTransferHostedSite: (id, email) => req(`/portal/admin/hosted-sites/${id}/transfer`, { method: "POST", body: { email } }),
+  adminDeleteEnrollment: (id) => req(`/portal/admin/enrollments/${id}`, { method: "DELETE" }),
+  adminClearEnrollmentMismatch: (id) => req(`/portal/admin/enrollments/${id}/clear-mismatch`, { method: "POST" }),
   adminOrders: (params) => req(`/portal/admin/orders${params ? `?${new URLSearchParams(params)}` : ""}`),
   adminOrder: (id) => req(`/portal/admin/orders/${id}`),
 };

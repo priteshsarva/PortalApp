@@ -282,7 +282,7 @@ export default function App() {
       {role === "client" && !user.email && <CompleteProfileGate user={user} onDone={setUser} />}
       {role === "client" && user.email && <ProSetupPopup />}
       {role === "client" && <WelcomeTour setNav={setNav} />}
-      {role === "client" && <AskOnWhatsApp user={user} context="I need help with my store." />}
+      {role === "client" && <AskOnWhatsApp user={user} context="I need help with my store." align="right" />}
     </div>
   );
 }

@@ -12,6 +12,7 @@ export default function AdminEnrollments() {
   const [error, setError] = useState(null);
   const [verifying, setVerifying] = useState(null);   // enrollment id being verified
   const [verifyMsg, setVerifyMsg] = useState({});      // id -> message
+  const [acting, setActing] = useState(null);          // id being deleted / cleared
 
   function load() {
     api.adminEnrollmentOverview().then((r) => setEnr(r.enrollments || [])).catch(setError);
@@ -26,6 +27,19 @@ export default function AdminEnrollments() {
       load();
     } catch (e) { setVerifyMsg((m) => ({ ...m, [id]: e.message || "Verification failed" })); }
     finally { setVerifying(null); }
+  }
+
+  async function clearMismatch(id) {
+    setActing(id); setError(null);
+    try { await api.adminClearEnrollmentMismatch(id); load(); }
+    catch (e) { setError(e); } finally { setActing(null); }
+  }
+
+  async function del(id, domain) {
+    if (!confirm(`Delete the key for "${domain}"?\nThis permanently removes the enrollment and its key.`)) return;
+    setActing(id); setError(null);
+    try { await api.adminDeleteEnrollment(id); load(); }
+    catch (e) { setError(e); } finally { setActing(null); }
   }
 
   return (
@@ -64,6 +78,9 @@ export default function AdminEnrollments() {
                   <Btn tone="ghost" onClick={() => verify(e.id)} disabled={verifying === e.id}>
                     {verifying === e.id ? "Verifying…" : "Verify domain"}
                   </Btn>
+                  <Btn tone="danger" onClick={() => del(e.id, e.domain)} disabled={acting === e.id}>
+                    {acting === e.id ? "…" : "Delete key"}
+                  </Btn>
                   {(verifyMsg[e.id] || e.domain_verify_msg) && (
                     <span style={{ fontSize: 12, color: e.domain_verified ? "#2e7d32" : "#9a2b2b" }}>
                       {verifyMsg[e.id] || e.domain_verify_msg}
@@ -95,9 +112,13 @@ export default function AdminEnrollments() {
                 </div>
 
                 {e.last_mismatch_domain && (
-                  <div style={{ marginTop: 10, background: "#fff4f4", border: `1px solid ${C.coral}`, borderRadius: 8, padding: "8px 11px", fontSize: 12.5, color: "#9a2b2b" }}>
-                    ⚠ Key was used from an unrecognized domain: <strong>{e.last_mismatch_domain}</strong>
-                    {e.last_mismatch_at ? ` · ${fmtDate(e.last_mismatch_at)}` : ""}
+                  <div style={{ marginTop: 10, background: "#fff4f4", border: `1px solid ${C.coral}`, borderRadius: 8, padding: "8px 11px", fontSize: 12.5, color: "#9a2b2b", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <span>⚠ Key was used from an unrecognized domain: <strong>{e.last_mismatch_domain}</strong>
+                    {e.last_mismatch_at ? ` · ${fmtDate(e.last_mismatch_at)}` : ""}</span>
+                    <button onClick={() => clearMismatch(e.id)} disabled={acting === e.id}
+                      style={{ background: "none", border: `1px solid ${C.coral}`, color: "#9a2b2b", borderRadius: 6, padding: "3px 10px", fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      {acting === e.id ? "…" : "Clear log"}
+                    </button>
                   </div>
                 )}
 

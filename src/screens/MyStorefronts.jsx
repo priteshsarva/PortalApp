@@ -1367,6 +1367,45 @@ function OwnGatewayRow({ siteId, current }) {
   );
 }
 
+// Single image field: upload (when R2 storage is configured) with a live preview,
+// plus a URL box as fallback / for pasting. Used for logo, favicon and hero image.
+function ImageField({ label, hint, value, onChange, canUpload }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function pick(e) {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    setBusy(true); setErr("");
+    try { const r = await api.uploadStorefrontImages([f]); if (r.urls && r.urls[0]) onChange(r.urls[0]); }
+    catch (er) { setErr(er.message || "Upload failed"); }
+    finally { setBusy(false); e.target.value = ""; }
+  }
+  return (
+    <Field label={label}>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+        {value
+          ? <img src={value} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: "cover", border: "1px solid #e6e9f0", flex: "0 0 auto" }} />
+          : <div style={{ width: 52, height: 52, borderRadius: 8, background: "#f1f3f8", border: "1px solid #e6e9f0", flex: "0 0 auto" }} />}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {canUpload && (
+            <label style={{ display: "inline-block", cursor: busy ? "default" : "pointer", background: "#16361b", color: "#34C08A", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>
+              {busy ? "Uploading…" : value ? "Replace image" : "Upload image"}
+              <input type="file" accept="image/*" hidden onChange={pick} disabled={busy} />
+            </label>
+          )}
+          <input style={{ ...inputStyle, marginTop: canUpload ? 8 : 0 }} value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={canUpload ? "…or paste an image URL" : "https://…"} />
+          {hint && <div style={{ fontSize: 11.5, color: "#9aa3b2", marginTop: 4 }}>{hint}</div>}
+          {value && <button type="button" onClick={() => onChange("")}
+            style={{ background: "none", border: "none", color: "#b23a48", fontSize: 12, cursor: "pointer", padding: "4px 0", marginTop: 2 }}>Remove</button>}
+          {err && <div style={{ color: "#b23a48", fontSize: 12, marginTop: 4 }}>{err}</div>}
+        </div>
+      </div>
+    </Field>
+  );
+}
+
 function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
   const [form, setForm] = useState(null);
   const [error, setError] = useState(null);
@@ -1395,7 +1434,7 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
     if (!files || !files.length) return;
     setUploading(true); setError(null);
     try {
-      const r = await api.uploadWholesaleImages(files);
+      const r = await api.uploadStorefrontImages(files);
       set("reviews", [...(form.reviews || []).filter((u) => String(u).trim()), ...(r.urls || [])]);
     } catch (err) { setError(err); }
     finally { setUploading(false); e.target.value = ""; }
@@ -1508,8 +1547,8 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Store name"><input style={inputStyle} value={form.store_name} onChange={(e) => set("store_name", e.target.value)} /></Field>
-        <Field label="Logo URL"><input style={inputStyle} value={form.logo_url} onChange={(e) => set("logo_url", e.target.value)} placeholder="https://…" /></Field>
-        <Field label="Favicon URL (browser-tab icon)"><input style={inputStyle} value={form.favicon_url} onChange={(e) => set("favicon_url", e.target.value)} placeholder="https://…/favicon.png (falls back to your logo)" /></Field>
+        <ImageField label="Logo" value={form.logo_url} onChange={(v) => set("logo_url", v)} canUpload={canUpload} />
+        <ImageField label="Favicon (browser-tab icon)" hint="Falls back to your logo if left empty" value={form.favicon_url} onChange={(v) => set("favicon_url", v)} canUpload={canUpload} />
         <Field label="WhatsApp number (checkout)"><input style={inputStyle} value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="+91 98765 43210" /></Field>
         <Field label="Contact email"><input style={inputStyle} value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
         <Field label="Contact phone"><input style={inputStyle} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
@@ -1591,7 +1630,7 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
       </Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <Field label="Hero title"><input style={inputStyle} value={form.hero.title} onChange={(e) => set("hero.title", e.target.value)} /></Field>
-        <Field label="Hero image URL"><input style={inputStyle} value={form.hero.image_url} onChange={(e) => set("hero.image_url", e.target.value)} placeholder="https://…" /></Field>
+        <ImageField label="Hero image" value={form.hero.image_url} onChange={(v) => set("hero.image_url", v)} canUpload={canUpload} />
       </div>
       <Field label="Hero video URL — .mp4/.webm or a YouTube / Vimeo link (autoplays muted, looped; takes priority over the image)">
         <input style={inputStyle} value={form.hero.video_url} onChange={(e) => set("hero.video_url", e.target.value)} placeholder="https://youtube.com/watch?v=… or https://…/banner.mp4" />
