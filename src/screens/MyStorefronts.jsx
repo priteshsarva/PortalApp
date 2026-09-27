@@ -295,16 +295,16 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged, locked = () => fal
   // section=…), each saving only its own fields.
   const steps = [
     { key: "basics", title: "Store basics", required: true, hint: "Name, logo, contact — the essentials.", render: (v, reg) => <SettingsPanel siteId={site.id} section="basics" onValid={v} registerSave={reg} /> },
+    { key: "storeinfo", title: "Store info", required: false, hint: "Optional — address & social links.", render: (v, reg) => <SettingsPanel siteId={site.id} section="storeinfo" registerSave={reg} /> },
     { key: "products", title: "Products", required: true, hint: "Pick which sources feed your storefront.", render: (v) => <ProductsPanel siteId={site.id} onChanged={bumpSrc} onValid={v} /> },
-    { key: "payments", title: "Own payment gateway", required: false, hint: "Optional — your UPI for direct checkout.", render: (v, reg) => <SettingsPanel siteId={site.id} section="payments" site={site} registerSave={reg} /> },
+    { key: "homepage", title: "Homepage layout", required: false, hint: "Optional — pick a ready-made layout.", render: () => <HomepagePresetPanel site={site} /> },
     { key: "colours", title: "Colours", required: false, hint: "Optional — your brand palette.", render: (v, reg) => <SettingsPanel siteId={site.id} section="theme" registerSave={reg} /> },
     { key: "content", title: "Homepage content", required: false, hint: "Optional — hero, announcement, reviews.", render: (v, reg) => <SettingsPanel siteId={site.id} section="content" registerSave={reg} /> },
-    { key: "navigation", title: "Navigation & front page", required: false, hint: "Optional — curate your menu and home page.", render: () => <NavigationPanel key={srcVer} siteId={site.id} /> },
-    { key: "homepage", title: "Homepage layout", required: false, hint: "Optional — pick a ready-made layout.", render: () => <HomepagePresetPanel site={site} /> },
-    { key: "storeinfo", title: "Store info", required: false, hint: "Optional — address & social links.", render: (v, reg) => <SettingsPanel siteId={site.id} section="storeinfo" registerSave={reg} /> },
-    { key: "policies", title: "Policies", required: false, hint: "Optional — shipping, returns, privacy, terms.", render: (v, reg) => <SettingsPanel siteId={site.id} section="policies" registerSave={reg} /> },
+    { key: "navigation", title: "Navigation & front page", required: false, hint: "Optional — curate your menu and home page.", render: (v, reg) => <NavigationPanel key={srcVer} siteId={site.id} registerSave={reg} /> },
     { key: "pricing", title: "Pricing markup", required: false, hint: "Optional — markup bands over cost price.", render: (v, reg) => <SettingsPanel siteId={site.id} section="pricing" registerSave={reg} /> },
+    { key: "policies", title: "Policies", required: false, hint: "Optional — shipping, returns, privacy, terms.", render: (v, reg) => <SettingsPanel siteId={site.id} section="policies" registerSave={reg} /> },
     { key: "analytics", title: "Analytics pixels", required: false, hint: "Optional — GA4 & Meta Pixel IDs.", render: (v, reg) => <SettingsPanel siteId={site.id} section="analytics" registerSave={reg} /> },
+    { key: "payments", title: "Own payment gateway", required: false, hint: "Optional — your UPI for direct checkout.", render: (v, reg) => <SettingsPanel siteId={site.id} section="payments" site={site} registerSave={reg} /> },
     { key: "domain", title: "Custom domain", required: false, lockFlag: "custom_domain", hint: "Optional — use your own domain.", render: () => <CustomDomainPanel site={site} onChanged={onChanged} /> },
     { key: "golive", title: "Submit & go live", required: false, hint: "Pick a plan, submit for approval, and pay to go live.", render: () => <GoLivePanel site={site} onChanged={onChanged} /> },
   ];
@@ -735,7 +735,7 @@ function CategoryMapPanel({ site }) {
   );
 }
 
-function NavigationPanel({ siteId }) {
+function NavigationPanel({ siteId, registerSave }) {
   const [order, setOrder] = useState(null);       // category names, in display order
   const [items, setItems] = useState({});         // cat -> { include, on_home, label, thumbnail }
   const [brandsAvail, setBrandsAvail] = useState({}); // cat -> [{name,count}] | "loading"
@@ -878,6 +878,17 @@ function NavigationPanel({ siteId }) {
     } catch (e) { setError(e); }
     finally { setBusy(false); }
   }
+
+  // Also let the setup wizard's "Save & continue" persist this panel — otherwise
+  // category/on-home changes here are lost when the user advances the wizard. The
+  // panel keeps its own "Save navigation" button for the full editor too.
+  const saveRef = React.useRef();
+  saveRef.current = save;
+  React.useEffect(() => {
+    if (!registerSave) return;
+    registerSave(() => saveRef.current && saveRef.current());
+    return () => registerSave(null);
+  }, [registerSave]);
 
   const th = { width: 84 };
 
