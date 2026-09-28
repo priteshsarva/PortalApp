@@ -752,6 +752,32 @@ function CategoryMapPanel({ site }) {
   );
 }
 
+// Compact URL + upload control for the small thumbnail fields in the nav panel
+// (categories and featured brands). Uploads to R2 via the storefront endpoint.
+function ThumbInput({ value, onChange, canUpload, placeholder = "Thumbnail image URL (optional)" }) {
+  const [busy, setBusy] = useState(false);
+  async function pick(e) {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    setBusy(true);
+    try { const r = await api.uploadStorefrontImages([f]); if (r.urls && r.urls[0]) onChange(r.urls[0]); }
+    catch (err) { alert(err.message || "Upload failed"); }
+    finally { setBusy(false); e.target.value = ""; }
+  }
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      {value && <img src={value} alt="" style={{ width: 30, height: 30, borderRadius: 6, objectFit: "cover", flex: "0 0 auto", border: "1px solid #e6e9f0" }} />}
+      <input style={{ ...inputStyle, flex: 1, minWidth: 0 }} value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+      {canUpload && (
+        <label style={{ flex: "0 0 auto", cursor: busy ? "default" : "pointer", background: "#16361b", color: "#34C08A", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}>
+          {busy ? "…" : "Upload"}
+          <input type="file" accept="image/*" hidden onChange={pick} disabled={busy} />
+        </label>
+      )}
+    </div>
+  );
+}
+
 function NavigationPanel({ siteId, registerSave }) {
   const [order, setOrder] = useState(null);       // category names, in display order
   const [items, setItems] = useState({});         // cat -> { include, on_home, label, thumbnail }
@@ -776,6 +802,8 @@ function NavigationPanel({ siteId, registerSave }) {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+  const [canUpload, setCanUpload] = useState(false);
+  useEffect(() => { api.uploadStatus().then((r) => setCanUpload(!!r.configured)).catch(() => {}); }, []);
 
   const bkey = (c, b) => `${c}.${b}`;
 
@@ -943,7 +971,7 @@ function NavigationPanel({ siteId, registerSave }) {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
                   <input style={inputStyle} value={it.label || ""} onChange={(e) => set(c, "label", e.target.value)} placeholder={`Menu label (${cap(c)})`} />
-                  <input style={inputStyle} value={it.thumbnail || ""} onChange={(e) => set(c, "thumbnail", e.target.value)} placeholder="Thumbnail image URL (optional)" />
+                  <ThumbInput value={it.thumbnail || ""} onChange={(v) => set(c, "thumbnail", v)} canUpload={canUpload} />
                 </div>
 
                 {openSubcatCat === c && (() => {
@@ -1004,7 +1032,7 @@ function NavigationPanel({ siteId, registerSave }) {
                               {sel && (<>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6, marginTop: 6 }}>
                                   <input style={inputStyle} value={sel.label || ""} onChange={(e) => setBrand(c, br.name, "label", e.target.value)} placeholder={`Label (${br.name})`} />
-                                  <input style={inputStyle} value={sel.thumbnail || ""} onChange={(e) => setBrand(c, br.name, "thumbnail", e.target.value)} placeholder="Thumbnail URL" />
+                                  <ThumbInput value={sel.thumbnail || ""} onChange={(v) => setBrand(c, br.name, "thumbnail", v)} canUpload={canUpload} placeholder="Thumbnail URL" />
                                   <label style={{ ...ckLbl, whiteSpace: "nowrap" }}><input type="checkbox" checked={sel.on_home !== false} onChange={(e) => setBrand(c, br.name, "on_home", e.target.checked)} /> Home</label>
                                 </div>
                                 <button type="button" onClick={() => toggleSubbrandList(c, br.name)} style={{ ...linkBtn, marginTop: 6 }}>
