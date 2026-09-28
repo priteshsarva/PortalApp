@@ -296,7 +296,14 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged, locked = () => fal
   const steps = [
     { key: "basics", title: "Store basics", required: true, hint: "Name, logo, contact — the essentials.", render: (v, reg) => <SettingsPanel siteId={site.id} section="basics" onValid={v} registerSave={reg} /> },
     { key: "storeinfo", title: "Store info", required: false, hint: "Optional — address & social links.", render: (v, reg) => <SettingsPanel siteId={site.id} section="storeinfo" registerSave={reg} /> },
-    { key: "products", title: "Products", required: true, hint: "Pick which sources feed your storefront.", render: (v) => <ProductsPanel siteId={site.id} onChanged={bumpSrc} onValid={v} /> },
+    { key: "products", title: "Products", required: true, hint: "Pick sources, then tidy their category names.", render: (v) => (
+      <>
+        <ProductsPanel siteId={site.id} onChanged={bumpSrc} onValid={v} />
+        <div style={{ height: 14 }} />
+        {/* Category mapping — populates once at least one source is selected & saved. */}
+        <CategoryMapPanel key={`cm-wiz-${srcVer}`} site={site} />
+      </>
+    ) },
     { key: "homepage", title: "Homepage layout", required: false, hint: "Optional — pick a ready-made layout.", render: () => <HomepagePresetPanel site={site} /> },
     { key: "colours", title: "Colours", required: false, hint: "Optional — your brand palette.", render: (v, reg) => <SettingsPanel siteId={site.id} section="theme" registerSave={reg} /> },
     { key: "content", title: "Homepage content", required: false, hint: "Optional — hero, announcement, reviews.", render: (v, reg) => <SettingsPanel siteId={site.id} section="content" registerSave={reg} /> },
@@ -625,7 +632,23 @@ function ProductsPanel({ siteId, onChanged, onValid }) {
 
   const term = q.trim().toLowerCase();
   const shown = data.available.filter((s) => !term || s.name.toLowerCase().includes(term) || s.id.toLowerCase().includes(term));
-  const byCat = shown.reduce((m, s) => { (m[s.category] ||= []).push(s); return m; }, {});
+  // Selected sources bubble to the top; the rest stay grouped by category below.
+  const selList = shown.filter((s) => sel.has(s.id));
+  const restByCat = shown.filter((s) => !sel.has(s.id)).reduce((m, s) => { (m[s.category] ||= []).push(s); return m; }, {});
+  const groupHead = { padding: "8px 14px 4px", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, color: "#9aa3b2", fontWeight: 700 };
+  const row = (s) => (
+    <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13 }}>
+      <input type="checkbox" checked={sel.has(s.id)} onChange={() => toggle(s.id)} />
+      <span style={{ color: "#1b2230" }}>{s.name}</span>
+      <span style={{ color: "#b3bccb", fontSize: 11 }}>{s.id}</span>
+      {s.base_url && (
+        <a href={s.base_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+          title="Visit source site" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, color: "#3b6fd8", fontSize: 11.5, textDecoration: "none" }}>
+          Visit <ExternalLink size={11} />
+        </a>
+      )}
+    </label>
+  );
 
   return (
     <Card>
@@ -637,22 +660,16 @@ function ProductsPanel({ siteId, onChanged, onValid }) {
       <ErrorNote error={error} />
       <input style={{ ...inputStyle, marginBottom: 12 }} placeholder="Filter sources…" value={q} onChange={(e) => setQ(e.target.value)} />
       <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid #eef1f6", borderRadius: 8, padding: "4px 0" }}>
-        {Object.keys(byCat).sort().map((cat) => (
+        {selList.length > 0 && (
+          <div>
+            <div style={{ ...groupHead, color: "#2e7d32" }}>✓ Selected ({selList.length})</div>
+            {selList.map(row)}
+          </div>
+        )}
+        {Object.keys(restByCat).sort().map((cat) => (
           <div key={cat}>
-            <div style={{ padding: "8px 14px 4px", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, color: "#9aa3b2", fontWeight: 700 }}>{cat}</div>
-            {byCat[cat].map((s) => (
-              <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", cursor: "pointer", fontSize: 13 }}>
-                <input type="checkbox" checked={sel.has(s.id)} onChange={() => toggle(s.id)} />
-                <span style={{ color: "#1b2230" }}>{s.name}</span>
-                <span style={{ color: "#b3bccb", fontSize: 11 }}>{s.id}</span>
-                {s.base_url && (
-                  <a href={s.base_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                    title="Visit source site" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, color: "#3b6fd8", fontSize: 11.5, textDecoration: "none" }}>
-                    Visit <ExternalLink size={11} />
-                  </a>
-                )}
-              </label>
-            ))}
+            <div style={groupHead}>{cat}</div>
+            {restByCat[cat].map(row)}
           </div>
         ))}
         {shown.length === 0 && <div style={{ padding: 14, color: "#9aa3b2", fontSize: 12.5 }}>No sources match "{q}".</div>}

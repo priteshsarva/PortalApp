@@ -228,6 +228,8 @@ export const api = {
 
   // ---- admin: sources ----
   adminSources: () => req("/portal/admin/sources"),
+  adminScrapeStatus: () => req("/portal/admin/sources/scrape-status"),
+  adminScrapeSource: (id) => req(`/portal/admin/sources/${id}/scrape`, { method: "POST" }),
   adminSourceCategories: (id) => req(`/portal/admin/sources/${id}/categories`),
   adminToggleCategory: (id, cat_name, enabled) =>
     req(`/portal/admin/sources/${id}/categories`, { method: "PATCH", body: { cat_name, enabled } }),

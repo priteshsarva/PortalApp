@@ -11,10 +11,30 @@ export default function AdminSources() {
   const [active, setActive] = useState(null); // source being inspected (categories)
   const [editing, setEditing] = useState(null); // source being edited
   const [refreshingAll, setRefreshingAll] = useState(false);
+  const [batch, setBatch] = useState({ batchRunning: false, depth: 0 }); // /devproductupdates status
+  const [scraping, setScraping] = useState(null); // source id being queued
 
   useEffect(() => {
     api.adminSources().then((r) => setSources(r.sources || [])).catch(setError);
   }, []);
+
+  // Poll the scrape status so "Scrape now" disables while the big update runs.
+  useEffect(() => {
+    const load = () => api.adminScrapeStatus().then(setBatch).catch(() => {});
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function scrapeNow(s) {
+    setScraping(s.id);
+    try {
+      const r = await api.adminScrapeSource(s.id);
+      if (typeof r.depth === "number") setBatch((b) => ({ ...b, depth: r.depth }));
+      alert(`Queued a scrape for ${s.name || s.id}.${r.depth > 1 ? ` ${r.depth} in the queue.` : ""}`);
+    } catch (e) { alert(e.message); }
+    finally { setScraping(null); }
+  }
 
   const filtered = useMemo(() => {
     if (!sources) return [];
@@ -71,6 +91,11 @@ export default function AdminSources() {
         </Btn>
       </div>
       <ErrorNote error={error} />
+      {batch.batchRunning && (
+        <div style={{ background: "#fff6e5", border: "1px solid #f0d98a", color: "#8a6100", padding: "8px 12px", borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>
+          A full product update (<code>/devproductupdates</code>) is running — per-source “Scrape now” is paused until it finishes.
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
         <div style={{ position: "relative", flex: 1, maxWidth: 320 }}>
@@ -108,6 +133,9 @@ export default function AdminSources() {
                   <td style={td}><code style={{ fontSize: 11.5 }}>{s.method}</code></td>
                   <td style={td}><Badge status={s.status} /></td>
                   <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
+                    <Btn small tone="lime" disabled={batch.batchRunning || scraping === s.id || s.method === "MANUAL"} onClick={() => scrapeNow(s)}>
+                      {scraping === s.id ? "Queued…" : "Scrape now"}
+                    </Btn>{" "}
                     <Btn small tone="ghost" onClick={() => setActive(s)}>Categories</Btn>{" "}
                     <Btn small tone="ghost" onClick={() => setEditing(s)}>Edit</Btn>{" "}
                     {s.status === "active"
