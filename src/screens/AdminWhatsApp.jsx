@@ -5,8 +5,20 @@ import { api } from "../api.js";
 import { PageHead, Card, Btn, Field, Modal, Spinner, ErrorNote, Empty, inputStyle, fmtDate } from "../ui.jsx";
 import { MessageCircle } from "lucide-react";
 
-const TABS = [["leads", "Leads"], ["faqs", "Saved answers"], ["pending", "Waiting for you"], ["answered", "Replies sent"], ["skipped", "Skipped"], ["business", "Extra notes (AI)"]];
+const TABS = [["campaign", "Outreach"], ["leads", "Leads"], ["faqs", "Saved answers"], ["pending", "Waiting for you"], ["answered", "Replies sent"], ["skipped", "Skipped"], ["business", "Extra notes (AI)"]];
 const SCORE_STYLE = { hot: ["#fdecea", "#c0392b"], warm: ["#fff6e5", "#8a6100"], cold: ["#eef1f6", "#6b7688"] };
+// What they actually asked for. These, not the score, decide who gets a call from you —
+// green ones are the concrete asks that only you can finish; "stall" is the polite goodbye.
+const SIGNAL = {
+  call:      { label: "📞 wants a call",    bg: "#e8f6ec", fg: "#1e6b34", why: "Asked to talk, gave a time, or called" },
+  reference: { label: "🤝 wants proof",     bg: "#e8f6ec", fg: "#1e6b34", why: "Asked who you work with / how to trust you — introduce them to a customer" },
+  migrate:   { label: "🔁 has a site",      bg: "#e8f6ec", fg: "#1e6b34", why: "Asked if you can move or rebuild their existing site" },
+  supplier:  { label: "📦 gave supplier",   bg: "#e8f6ec", fg: "#1e6b34", why: "Shared their own wholesaler's link or number" },
+  sourcing:  { label: "🛒 wants stock",     bg: "#eaf1fb", fg: "#1d4e89", why: "Wants to buy products from us, not build a store" },
+  numbers:   { label: "📊 gave numbers",    bg: "#e8f6ec", fg: "#1e6b34", why: "Told you real order or enquiry volume" },
+  paying:    { label: "💳 ready to pay",    bg: "#e8f6ec", fg: "#1e6b34", why: "Asked how to pay or wanted the link" },
+  stall:     { label: "🕗 polite no",       bg: "#f4f1e8", fg: "#8a6100", why: "\"I'll let you know\" / \"abhi nahi\" — sounds like a yes, isn't one" },
+};
 const STAGE_LABEL = { ready: "✅ ready to build", details: "📝 giving details", demo_yes: "👍 wants the demo",
   demo_offered: "🎬 demo offered", talking: "💬 talking", new: "🆕 new", not_interested: "❌ not interested" };
 
@@ -196,6 +208,162 @@ function BusinessInfo() {
   );
 }
 
+// Outreach: upload a sheet of numbers, the bot opens each conversation, and the same sheet
+// comes back with what happened to every one of them.
+const CSTATUS = { qualified: ["#fdecea", "#c0392b", "🔥 qualified"], replied: ["#eaf7ee", "#2c6e2c", "💬 replied"],
+  sent: ["#eef3fb", "#3a5a8c", "📤 opened"], pending: ["#fff6e5", "#8a6100", "⏳ waiting"],
+  stopped: ["#eef1f6", "#6b7688", "🔕 no reply"], failed: ["#fdecea", "#c0392b", "⚠ failed"],
+  skipped: ["#eef1f6", "#6b7688", "⏸ paused"] };
+
+// When cold outreach goes out. Saved in the portal so it takes effect without a deploy.
+const hourLabel = (h) => `${((h + 11) % 12) + 1}${h < 12 || h === 24 ? "am" : "pm"}`;
+function Timing({ stats, onSaved }) {
+  const [from, setFrom] = useState(stats.from ?? 8);
+  const [to, setTo] = useState(stats.to ?? 19);
+  const [perDay, setPerDay] = useState(stats.per_day ?? 60);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState(null);
+  useEffect(() => { setFrom(stats.from ?? 8); setTo(stats.to ?? 19); setPerDay(stats.per_day ?? 60); }, [stats.from, stats.to, stats.per_day]);
+
+  const save = async () => {
+    setErr(null);
+    try { await api.adminWaCampaignSettings({ from: +from, to: +to, per_day: +perDay }); setSaved(true); setTimeout(() => setSaved(false), 2500); onSaved?.(); }
+    catch (e) { setErr(e); }
+  };
+  const box = { ...inputStyle, width: 88, padding: "6px 8px" };
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #eef1f6" }}>
+      <ErrorNote error={err} />
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13 }}>
+        <span style={{ color: "#55606f" }}>New numbers get messaged between</span>
+        <select style={box} value={from} onChange={(e) => setFrom(e.target.value)}>
+          {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
+        </select>
+        <span style={{ color: "#55606f" }}>and</span>
+        <select style={box} value={to} onChange={(e) => setTo(e.target.value)}>
+          {Array.from({ length: 24 }, (_, h) => <option key={h + 1} value={h + 1}>{hourLabel(h + 1)}</option>)}
+        </select>
+        <span style={{ color: "#55606f" }}>· max</span>
+        <input style={{ ...box, width: 70 }} type="number" min="1" max="500" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
+        <span style={{ color: "#55606f" }}>a day</span>
+        <Btn small onClick={save}>Save</Btn>
+        {saved && <span style={{ color: "#2c6e2c", fontSize: 12.5 }}>Saved ✓</span>}
+      </div>
+      <div style={{ fontSize: 12, color: "#9aa3b2", marginTop: 6 }}>
+        Indian time. Keep the daily number low — a burst of messages from one number is what gets it banned.
+      </div>
+    </div>
+  );
+}
+
+function Campaign() {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState("");
+
+  const load = () => api.adminWaCampaign().then(setData).catch(setErr);
+  useEffect(() => { load(); const t = setInterval(load, 20000); return () => clearInterval(t); }, []);
+
+  const upload = async (file) => {
+    if (!file) return;
+    setBusy("Reading the sheet…"); setErr(null);
+    try {
+      const base64 = await new Promise((ok, no) => {
+        const r = new FileReader();
+        r.onload = () => ok(String(r.result).split(",")[1]);
+        r.onerror = () => no(new Error("Could not read that file"));
+        r.readAsDataURL(file);
+      });
+      const r = await api.adminWaCampaignUpload(file.name, base64);
+      setBusy(`${r.added} number(s) added${r.skipped ? `, ${r.skipped} already in the list` : ""}${r.bad ? `, ${r.bad} not valid` : ""}`);
+      load();
+    } catch (e) { setErr(e); setBusy(""); }
+  };
+
+  const download = async () => {
+    setBusy("Building the file…"); setErr(null);
+    try {
+      const r = await api.adminWaCampaignExport();
+      const a = document.createElement("a");
+      a.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${r.base64}`;
+      a.download = r.filename; a.click();
+      setBusy("");
+    } catch (e) { setErr(e); setBusy(""); }
+  };
+
+  const s = data?.stats || {};
+  const paused = (s.skipped || 0) > 0 && !(s.pending || 0);
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      <Card>
+        <ErrorNote error={err} />
+        <div style={{ fontSize: 13, color: "#55606f", marginBottom: 10 }}>
+          Upload a sheet with the <b>mobile number in the first column</b> (.xlsx or .csv — other columns are kept).
+          The bot opens each chat with your two messages, handles the replies itself, and sends you the numbers worth your time.
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <label style={{ background: "#16361b", color: "#34C08A", fontWeight: 700, fontSize: 13.5,
+            padding: "9px 16px", borderRadius: 10, cursor: "pointer" }}>
+            ⬆ Upload numbers
+            <input type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }}
+              onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+          <Btn tone="ghost" onClick={download}>⬇ Download updated sheet</Btn>
+          {(s.pending || s.skipped) ? (
+            <Btn tone="ghost" onClick={async () => { await api.adminWaCampaignPause(!paused).catch(setErr); load(); }}>
+              {paused ? "▶ Resume sending" : "⏸ Pause sending"}
+            </Btn>
+          ) : null}
+          {busy && <span style={{ fontSize: 12.5, color: "#6b7688" }}>{busy}</span>}
+        </div>
+        {data && <Timing stats={s} onSaved={load} />}
+        {data && (
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 12, fontSize: 13 }}>
+            <span><b>{s.total || 0}</b> numbers</span>
+            <span style={{ color: "#8a6100" }}>⏳ {s.pending || 0} waiting</span>
+            <span style={{ color: "#3a5a8c" }}>📤 {s.sent || 0} opened</span>
+            <span style={{ color: "#2c6e2c" }}>💬 {s.replied || 0} replied</span>
+            <span style={{ color: "#c0392b" }}>🔥 {s.qualified || 0} qualified</span>
+            <span style={{ color: "#6b7688" }}>🔕 {s.stopped || 0} no reply</span>
+            <span style={{ marginLeft: "auto", color: "#9aa3b2" }}>{s.sent_today || 0}/{s.per_day || 0} sent today</span>
+          </div>
+        )}
+      </Card>
+
+      {!data ? <Spinner /> : !data.rows.length ? <Card><Empty msg="No numbers yet — upload a sheet to start." /></Card> : (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 620 }}>
+              <thead><tr style={{ background: "#f7f8fb", color: "#6b7688", textAlign: "left" }}>
+                <th style={{ padding: "9px 12px" }}>Number</th><th style={{ padding: "9px 12px" }}>Name</th>
+                <th style={{ padding: "9px 12px" }}>Status</th><th style={{ padding: "9px 12px" }}>Opened</th>
+                <th style={{ padding: "9px 12px" }}>Interest</th><th style={{ padding: "9px 12px" }}></th>
+              </tr></thead>
+              <tbody>{data.rows.map((r) => {
+                const [bg, fg, label] = CSTATUS[r.status] || ["#eef1f6", "#6b7688", r.status];
+                return (
+                  <tr key={r.id} style={{ borderTop: "1px solid #eef1f6" }}>
+                    <td style={{ padding: "9px 12px" }}>+{r.phone}</td>
+                    <td style={{ padding: "9px 12px" }}>{r.name || r.business || "—"}</td>
+                    <td style={{ padding: "9px 12px" }}>
+                      <span style={{ background: bg, color: fg, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>{label}</span>
+                    </td>
+                    <td style={{ padding: "9px 12px", color: "#9aa3b2" }}>{r.sent_at ? fmtDate(r.sent_at) : "—"}</td>
+                    <td style={{ padding: "9px 12px" }}>{r.score ? `${r.score}${r.stage ? ` · ${r.stage}` : ""}` : "—"}</td>
+                    <td style={{ padding: "9px 12px" }}>
+                      <a href={`https://wa.me/${r.phone}`} target="_blank" rel="noreferrer" style={{ color: "#2c6e2c" }}>open chat ↗</a>
+                    </td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function AdminWhatsApp() {
   const [tab, setTab] = useState("faqs");
   const [rows, setRows] = useState(null);
@@ -205,7 +373,7 @@ export default function AdminWhatsApp() {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    if (tab === "business") return;
+    if (tab === "business" || tab === "campaign") return;
     setRows(null); setError(null);
     (tab === "faqs" ? api.adminWaFaqs().then((r) => r.faqs)
       : tab === "leads" ? api.adminWaLeads().then((r) => r.leads)
@@ -232,7 +400,7 @@ export default function AdminWhatsApp() {
       </div>
       {tab === "faqs" && <TestMatch />}
       <ErrorNote error={error} />
-      {tab === "business" ? <BusinessInfo /> : !rows ? <Spinner /> : tab === "leads" ? (
+      {tab === "campaign" ? <Campaign /> : tab === "business" ? <BusinessInfo /> : !rows ? <Spinner /> : tab === "leads" ? (
         rows.length === 0 ? <Card><Empty msg="No leads yet — they appear as the assistant talks to people." /></Card> : (
           <div style={{ display: "grid", gap: 10 }}>
             {rows.map((l) => {
@@ -248,6 +416,17 @@ export default function AdminWhatsApp() {
                     <span style={{ background: bg, color: fg, fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 999, textTransform: "uppercase" }}>{l.score}</span>
                   </div>
                   <div style={{ fontSize: 13, color: "#55606f", margin: "6px 0" }}>{facts.join(" · ") || "nothing captured yet"}</div>
+                  {(l.signals || []).length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0" }}>
+                      {l.signals.map((s) => (
+                        <span key={s} title={SIGNAL[s]?.why}
+                          style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
+                            background: SIGNAL[s]?.bg || "#eef1f5", color: SIGNAL[s]?.fg || "#55606f" }}>
+                          {SIGNAL[s]?.label || s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {l.score_reason && <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>{l.score_reason}</div>}
                   {l.intent && <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>Wants: {l.intent}</div>}
                   {(l.store_name || l.supplier_links || l.whatsapp_for_orders || l.own_domain) && (
