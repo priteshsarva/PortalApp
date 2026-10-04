@@ -141,6 +141,7 @@ export const api = {
   selloshipConnect: (siteId, body) => req(`/portal/hosted-sites/${siteId}/selloship/connect`, { method: "POST", body }),
   selloshipDisconnect: (siteId) => req(`/portal/hosted-sites/${siteId}/selloship/connect`, { method: "DELETE" }),
   selloshipPush: (siteId, orderId) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/selloship-push`, { method: "POST" }),
+  selloshipAutoPush: (siteId, auto_push) => req(`/portal/hosted-sites/${siteId}/selloship/auto-push`, { method: "PUT", body: { auto_push } }),
   myShipments: () => req("/portal/shipments"),
   shipmentsByOrder: (orderId) => req(`/portal/shipments?order_id=${encodeURIComponent(orderId)}`),
   adminShipments: (status) => req(`/portal/admin/shipments${status ? `?status=${encodeURIComponent(status)}` : ""}`),

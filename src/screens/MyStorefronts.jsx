@@ -1944,6 +1944,13 @@ function SelloshipCard({ site, bare = false }) {
     setBusy(true); setErr(null);
     try { setSt(await api.selloshipDisconnect(site.id)); } catch (e) { setErr(e); } finally { setBusy(false); }
   }
+  async function setAuto(on) {
+    if (on === st.auto_push) return;
+    if (on && !confirm("Book parcels automatically as soon as a payment is confirmed? This spends your Selloship balance without asking each time.")) return;
+    setBusy(true); setErr(null);
+    try { const r = await api.selloshipAutoPush(site.id, on); setSt((s) => ({ ...s, auto_push: r.auto_push })); }
+    catch (e) { setErr(e); } finally { setBusy(false); }
+  }
 
   return (
     <div style={bare ? {} : { marginTop: 18, paddingTop: 14, borderTop: "1px solid #eef1f6" }}>
@@ -1956,11 +1963,38 @@ function SelloshipCard({ site, bare = false }) {
       {err && <ErrorNote error={err} />}
       {!st ? <div style={{ fontSize: 12, color: "#9aa3b2" }}>Checking…</div>
         : st.connected ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 12.5 }}>
-            <span style={{ color: "#14663a", fontWeight: 600 }}>✓ Connected{st.store_name ? ` — ${st.store_name}` : ""}</span>
-            <span style={{ color: "#6b7688" }}>{st.email}</span>
-            <Btn small tone="ghost" onClick={disconnect} disabled={busy}>Disconnect</Btn>
-          </div>
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 12.5 }}>
+              <span style={{ color: "#14663a", fontWeight: 600 }}>✓ Connected{st.store_name ? ` — ${st.store_name}` : ""}</span>
+              <span style={{ color: "#6b7688" }}>{st.email}</span>
+              <Btn small tone="ghost" onClick={disconnect} disabled={busy}>Disconnect</Btn>
+            </div>
+            {/* Automatic vs manual. Manual works either way — this only decides
+                whether we also book it for them the moment payment is confirmed. */}
+            <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+              {[
+                { on: false, label: "Manual", hint: "You press “Book with Selloship” on each order." },
+                { on: true, label: "Automatic", hint: "Booked the moment a payment is confirmed." },
+              ].map((o) => (
+                <button key={o.label} onClick={() => setAuto(o.on)} disabled={busy}
+                  style={{
+                    flex: 1, textAlign: "left", cursor: busy ? "default" : "pointer", padding: "9px 11px", borderRadius: 9,
+                    border: st.auto_push === o.on ? "1.5px solid #2c7a4b" : "1px solid #d4d9e3",
+                    background: st.auto_push === o.on ? "#f1f9f4" : "#fff",
+                  }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: st.auto_push === o.on ? "#14663a" : "#42505f" }}>
+                    {st.auto_push === o.on ? "● " : "○ "}{o.label}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "#6b7688", marginTop: 2 }}>{o.hint}</div>
+                </button>
+              ))}
+            </div>
+            {st.auto_push && (
+              <div style={{ fontSize: 11.5, color: "#8a6100", marginTop: 7 }}>
+                Parcels are booked without asking, which spends your Selloship balance. We'll notify you if a booking fails.
+              </div>
+            )}
+          </>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "end" }}>
             <Field label="Selloship email"><input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" /></Field>
