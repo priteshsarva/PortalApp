@@ -134,6 +134,13 @@ export const api = {
   adminVerifyOrder: (orderId, utr) => req(`/portal/admin/orders/${orderId}/verify-payment`, { method: "POST", body: { utr } }),
   adminRefundOrder: (orderId) => req(`/portal/admin/orders/${orderId}/refund`, { method: "POST" }),
   submitShipment: (body) => req("/portal/shipments", { method: "POST", body }),
+  updateShipment: (id, body) => req(`/portal/shipments/${id}`, { method: "PATCH", body }),
+
+  // ---- Selloship: per-store connection + order push ----
+  selloshipStatus: (siteId) => req(`/portal/hosted-sites/${siteId}/selloship`),
+  selloshipConnect: (siteId, body) => req(`/portal/hosted-sites/${siteId}/selloship/connect`, { method: "POST", body }),
+  selloshipDisconnect: (siteId) => req(`/portal/hosted-sites/${siteId}/selloship/connect`, { method: "DELETE" }),
+  selloshipPush: (siteId, orderId) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/selloship-push`, { method: "POST" }),
   myShipments: () => req("/portal/shipments"),
   shipmentsByOrder: (orderId) => req(`/portal/shipments?order_id=${encodeURIComponent(orderId)}`),
   adminShipments: (status) => req(`/portal/admin/shipments${status ? `?status=${encodeURIComponent(status)}` : ""}`),

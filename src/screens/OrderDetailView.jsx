@@ -12,7 +12,7 @@ const money = (n) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFra
 const LEG_LABEL = { wholesaler_to_retailer: "Wholesaler → retailer", retailer_to_customer: "Retailer → customer", wholesaler_to_customer: "Wholesaler → customer" };
 const ORDER_STATUSES = ["pending", "processing", "on-hold", "completed", "cancelled", "refunded"];
 
-export default function OrderDetailView({ data, role = "vendor", onVerify, onStatus, onShip, onMarkShipped, busy }) {
+export default function OrderDetailView({ data, role = "vendor", onVerify, onStatus, onShip, onMarkShipped, onTracking, onCarrierPush, busy }) {
   const { order, items = [], shipments = [] } = data || {};
   const [status, setStatus] = useState(order?.status || "pending");
   if (!order) return null;
@@ -77,9 +77,27 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 15, borderTop: "1px solid #e6e9f0", marginTop: 6, paddingTop: 6 }}>
               <span>Order total</span><span>{money(order.total)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginTop: 4, color: paid ? "#14663a" : "#8a6100" }}>
-              <span>{paid ? "Paid" : "Pending payment"}</span><span>{paid ? money(order.total) : money(order.total)}</span>
-            </div>
+            {(() => {
+              // Online slice: for COD/semi-COD it's the advance (0 for pure COD);
+              // prepaid (incl. pre-migration orders, default 'prepaid') = the full total.
+              const onlineDue = (order.payment_method === "cod" || order.payment_method === "semicod")
+                ? Number(order.online_amount || 0) : Number(order.total);
+              return onlineDue > 0 ? (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginTop: 4, color: paid ? "#14663a" : "#8a6100" }}>
+                  <span>{paid ? "Paid online" : "Online payment pending"}</span><span>{money(onlineDue)}</span>
+                </div>
+              ) : null;
+            })()}
+            {Number(order.cod_due) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginTop: 4, color: "#8a6100", fontWeight: 600 }}>
+                <span>Collect on delivery</span><span>{money(order.cod_due)}</span>
+              </div>
+            )}
+            {order.payment_method && order.payment_method !== "prepaid" && (
+              <div style={{ fontSize: 11, color: "#6b7688", marginTop: 4 }}>
+                Method: {order.payment_method === "cod" ? "Cash on delivery" : "Semi-COD (advance + COD)"}
+              </div>
+            )}
             {isAdmin && costTotal > 0 && (
               <div style={{ fontSize: 11, color: "#8a93a3", marginTop: 6 }}>Total supplier cost: {money(costTotal)}</div>
             )}
@@ -116,6 +134,13 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
                 {role === "vendor" && order.fulfilment_mode === "direct_to_customer" && (
                   <span style={{ fontSize: 12, color: "#2b5bb5" }}>The wholesaler ships this order directly.</span>
                 )}
+                {/* Book the parcels with the vendor's own Selloship account. Safe to
+                    press twice — already-booked parcels are skipped server-side. */}
+                {role === "vendor" && onCarrierPush && order.selloship_connected && (
+                  shipments.some((s) => s.courier === "Selloship")
+                    ? <span style={{ fontSize: 12, color: "#14663a" }}>Booked with Selloship — tracking arrives once a courier is assigned.</span>
+                    : <Btn small disabled={busy} onClick={() => onCarrierPush()}>🚚 Book with Selloship</Btn>
+                )}
                 {role === "admin" && onMarkShipped && (
                   <Btn small disabled={busy} onClick={() => { if (confirm("Mark this order shipped and release all held funds to the seller(s)?")) onMarkShipped(); }}>Mark shipped (no proof)</Btn>
                 )}
@@ -129,6 +154,11 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
                 <Badge status={s.status === "approved" ? "active" : s.status === "rejected" ? "rejected" : "pending"} />
               </div>
               <div style={{ fontSize: 11.5, color: "#6b7688", marginTop: 2 }}>{s.courier || "courier —"} {s.tracking_no ? `· ${s.tracking_no}` : ""} · {fmtDate(s.created_at)}</div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 3, fontSize: 11.5 }}>
+                {s.tracking_url && <a href={s.tracking_url} target="_blank" rel="noreferrer" style={{ color: "#3b6fd8", textDecoration: "none" }}>track parcel ↗</a>}
+                {onTracking && <button onClick={() => onTracking(s)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#6b7688", textDecoration: "underline", fontSize: 11.5 }}>{s.tracking_no ? "edit tracking" : "add tracking"}</button>}
+                {s.buyer_notified_at && <span style={{ color: "#14663a" }}>buyer emailed</span>}
+              </div>
               {Array.isArray(s.photos) && s.photos.length > 0 && (
                 <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                   {s.photos.map((p, i) => (

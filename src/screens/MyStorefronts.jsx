@@ -1389,7 +1389,7 @@ function HomepagePresetPanel({ site }) {
 // so each sub-step safely saves only its own slice.
 const SECTION_FIELDS = {
   basics: ["store_name", "logo_url", "favicon_url", "whatsapp", "email", "phone"],
-  payments: ["upi_id", "upi_name", "payment_position"],
+  payments: ["upi_id", "upi_name", "payment_position", "checkout"],
   theme: ["theme"],
   content: ["announcement", "hero", "about", "reviews"],
   storeinfo: ["address", "social_urls"],
@@ -1521,6 +1521,18 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
       upi_id: s.upi_id || "",
       upi_name: s.upi_name || "",
       payment_position: s.payment_position === "before" ? "before" : "after",
+      checkout: {
+        methods: {
+          prepaid: s.checkout?.methods?.prepaid ?? true, // prepaid on by default = today's behaviour
+          cod: !!s.checkout?.methods?.cod,
+          semicod: !!s.checkout?.methods?.semicod,
+        },
+        default: s.checkout?.default || "prepaid",
+        cod_fee: s.checkout?.cod_fee ?? "",
+        prepaid_discount: s.checkout?.prepaid_discount ?? "",
+        advance_type: s.checkout?.advance_type === "fixed" ? "fixed" : "percent",
+        advance_value: s.checkout?.advance_value ?? "",
+      },
       email: s.email || "",
       phone: s.phone || "",
       announcement: s.announcement || "",
@@ -1564,6 +1576,14 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
       const full = {
         ...form,
         reviews: (form.reviews || []).map((s) => String(s).trim()).filter(Boolean),
+        checkout: {
+          methods: form.checkout.methods,
+          default: form.checkout.default,
+          cod_fee: Number(form.checkout.cod_fee) || 0,
+          prepaid_discount: Number(form.checkout.prepaid_discount) || 0,
+          advance_type: form.checkout.advance_type,
+          advance_value: Number(form.checkout.advance_value) || 0,
+        },
         pricing: form.pricing.using_default ? {} : { bands: form.pricing.bands.map((b) => ({
           min: Number(b.min) || 0,
           max: b.max === null || b.max === "" || b.max === undefined ? null : Number(b.max),
@@ -1627,6 +1647,56 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
         </Field>
       </div>
       {site?.allow_own_gateway && <OwnGatewayRow siteId={siteId} current={site.store_gateway || "pay0"} />}
+
+      <div style={{ fontWeight: 700, fontSize: 13, margin: "22px 0 6px" }}>Checkout options</div>
+      <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>
+        Which payment methods buyers can pick. <b>Prepaid</b> collects the full amount online; <b>COD</b> collects at delivery; <b>Semi-COD</b> takes an advance online and the rest on delivery. Online collection needs your UPI (above) or a gateway.
+      </div>
+      {[["prepaid", "Prepaid — pay full amount online"], ["cod", "Cash on delivery (COD)"], ["semicod", "Semi-COD — advance online, rest on delivery"]].map(([k, label]) => (
+        <label key={k} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, margin: "5px 0" }}>
+          <input type="checkbox" checked={!!form.checkout.methods[k]}
+            onChange={(e) => set("checkout", { ...form.checkout, methods: { ...form.checkout.methods, [k]: e.target.checked } })} />
+          {label}
+        </label>
+      ))}
+      {form.checkout.methods.semicod && !form.upi_id && !site?.allow_own_gateway && (
+        <div style={{ fontSize: 11, color: "#b26a00", marginTop: 6 }}>⚠ Semi-COD needs online payment — add a UPI ID above so buyers can pay the advance.</div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
+        {form.checkout.methods.prepaid && (
+          <Field label="Prepaid discount (₹ off)"><input style={inputStyle} inputMode="numeric" value={form.checkout.prepaid_discount}
+            onChange={(e) => set("checkout", { ...form.checkout, prepaid_discount: e.target.value })} placeholder="0" /></Field>
+        )}
+        {(form.checkout.methods.cod || form.checkout.methods.semicod) && (
+          <Field label="COD extra charge (₹)"><input style={inputStyle} inputMode="numeric" value={form.checkout.cod_fee}
+            onChange={(e) => set("checkout", { ...form.checkout, cod_fee: e.target.value })} placeholder="0" /></Field>
+        )}
+      </div>
+      {form.checkout.methods.semicod && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
+          <Field label="Semi-COD advance type">
+            <select style={inputStyle} value={form.checkout.advance_type} onChange={(e) => set("checkout", { ...form.checkout, advance_type: e.target.value })}>
+              <option value="percent">Percentage of total</option>
+              <option value="fixed">Fixed ₹ amount</option>
+            </select>
+          </Field>
+          <Field label={form.checkout.advance_type === "fixed" ? "Advance amount (₹)" : "Advance (% of total)"}>
+            <input style={inputStyle} inputMode="numeric" value={form.checkout.advance_value}
+              onChange={(e) => set("checkout", { ...form.checkout, advance_value: e.target.value })} placeholder={form.checkout.advance_type === "fixed" ? "500" : "20"} />
+          </Field>
+        </div>
+      )}
+      {Object.values(form.checkout.methods).filter(Boolean).length > 1 && (
+        <div style={{ marginTop: 12, maxWidth: 320 }}>
+          <Field label="Default method at checkout">
+            <select style={inputStyle} value={form.checkout.default} onChange={(e) => set("checkout", { ...form.checkout, default: e.target.value })}>
+              {["prepaid", "cod", "semicod"].filter((k) => form.checkout.methods[k]).map((k) => (
+                <option key={k} value={k}>{k === "prepaid" ? "Prepaid" : k === "cod" ? "COD" : "Semi-COD"}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
       </>)}
 
       {show("theme") && (<>
@@ -1846,7 +1916,58 @@ function FulfilmentPanel({ site }) {
             : !site.allow_payout_routing && <div style={{ fontSize: 11.5, color: "#8a93a3", marginTop: 4 }}>Payment routing needs a higher plan. Direct-to-UPI is active.</div>}
         </Field>
       </div>
+      <SelloshipCard site={site} />
     </Card>
+  );
+}
+
+// Connect the vendor's OWN Selloship account, so their rates apply and Selloship
+// remits their COD to them. The password is used once to fetch their vendor id and
+// is not stored — say so, because we are asking for a third-party password.
+function SelloshipCard({ site }) {
+  const [st, setSt] = useState(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => { api.selloshipStatus(site.id).then(setSt).catch(() => setSt({ connected: false })); }, [site.id]);
+
+  async function connect() {
+    setBusy(true); setErr(null);
+    try { setSt(await api.selloshipConnect(site.id, { email: email.trim(), password })); setPassword(""); }
+    catch (e) { setErr(e); } finally { setBusy(false); }
+  }
+  async function disconnect() {
+    if (!confirm("Disconnect Selloship? Parcels already booked keep tracking normally.")) return;
+    setBusy(true); setErr(null);
+    try { setSt(await api.selloshipDisconnect(site.id)); } catch (e) { setErr(e); } finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid #eef1f6" }}>
+      <div style={{ fontWeight: 700, fontSize: 13 }}>Ship through Selloship</div>
+      <div style={{ fontSize: 12, color: "#6b7688", margin: "3px 0 10px" }}>
+        Connect your own Selloship account and you can book an order's parcels from its order page.
+        Your rates and your COD remittance — nothing routes through us. Your password is used once to
+        fetch your vendor id and is not saved.
+      </div>
+      {err && <ErrorNote error={err} />}
+      {!st ? <div style={{ fontSize: 12, color: "#9aa3b2" }}>Checking…</div>
+        : st.connected ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 12.5 }}>
+            <span style={{ color: "#14663a", fontWeight: 600 }}>✓ Connected{st.store_name ? ` — ${st.store_name}` : ""}</span>
+            <span style={{ color: "#6b7688" }}>{st.email}</span>
+            <Btn small tone="ghost" onClick={disconnect} disabled={busy}>Disconnect</Btn>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "end" }}>
+            <Field label="Selloship email"><input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" /></Field>
+            <Field label="Selloship password"><input style={inputStyle} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" /></Field>
+            <Btn tone="lime" onClick={connect} disabled={busy || !email.trim() || !password}>{busy ? "Connecting…" : "Connect"}</Btn>
+          </div>
+        )}
+    </div>
   );
 }
 
@@ -1887,6 +2008,15 @@ function OrdersPanel({ siteId }) {
   async function reloadDetail(id) {
     try { const r = await api.hostedSiteOrder(siteId, id); setDetail((d) => ({ ...d, [id]: r })); } catch { /* ignore */ }
   }
+  // Book this order's parcels with the store's own Selloship account.
+  async function carrierPush(id) {
+    try {
+      const r = await api.selloshipPush(siteId, id);
+      const fails = (r.failed || []).map((f) => `${f.parcel}: ${f.error}`).join("\n");
+      alert(`Booked ${r.booked?.length || 0} parcel(s) with Selloship.` + (fails ? `\n\nNot booked:\n${fails}` : ""));
+      reloadDetail(id);
+    } catch (e) { alert(e.message); }
+  }
   async function changeFulfilment(o, mode) {
     try { await api.setOrderFulfilment(siteId, o.id, mode); load(); }
     catch (e) { alert(e.message); }
@@ -1924,7 +2054,9 @@ function OrdersPanel({ siteId }) {
                     <div style={{ paddingTop: 12 }}>
                       <OrderDetailView data={detail[o.id]} role="vendor"
                         onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o.id, s)}
-                        onShip={() => setShip(o)} />
+                        onShip={() => setShip({ ...o, existing: null })}
+                        onTracking={(s) => setShip({ ...o, existing: s })}
+                        onCarrierPush={() => carrierPush(o.id)} />
                       {o.payment_status !== "verified" && (
                         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 12, fontSize: 12, color: "#6b7688" }}>
                           <span>Fulfilment:</span>
@@ -1942,7 +2074,8 @@ function OrdersPanel({ siteId }) {
           ))}
         </div>
       )}
-      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg="retailer_to_customer" onClose={() => setShip(null)} onDone={() => { const id = ship.id; setShip(null); reloadDetail(id); load(); }} />}
+      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg={ship.existing?.leg || "retailer_to_customer"} existing={ship.existing}
+        onClose={() => setShip(null)} onDone={() => { const id = ship.id; setShip(null); reloadDetail(id); load(); }} />}
     </Card>
   );
 }

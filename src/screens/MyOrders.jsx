@@ -48,6 +48,15 @@ export default function MyOrders() {
     try { await api.verifyOrderPayment(o.enrollment_id, o.id, utr || undefined); reloadDetail(o); load(); }
     catch (e) { alert(e.message); }
   }
+  // Book this order's parcels with the store's own Selloship account.
+  async function carrierPush(o) {
+    try {
+      const r = await api.selloshipPush(o.enrollment_id, o.id);
+      const fails = (r.failed || []).map((f) => `${f.parcel}: ${f.error}`).join("\n");
+      alert(`Booked ${r.booked?.length || 0} parcel(s) with Selloship.` + (fails ? `\n\nNot booked:\n${fails}` : ""));
+      reloadDetail(o);
+    } catch (e) { alert(e.message); }
+  }
 
   const pill = (active) => ({ border: active ? `1px solid ${C.ink}` : "1px solid #d4d9e3", background: active ? C.ink : "#fff", color: active ? "#fff" : "#42505f", padding: "5px 11px", borderRadius: 999, fontSize: 12, cursor: "pointer", textTransform: "capitalize" });
 
@@ -96,7 +105,9 @@ export default function MyOrders() {
                     <div style={{ paddingTop: 12 }}>
                       <OrderDetailView data={detail[o.id]} role="vendor"
                         onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o, s)}
-                        onShip={() => setShip(o)} />
+                        onShip={() => setShip({ ...o, existing: null })}
+                        onTracking={(s) => setShip({ ...o, existing: s })}
+                        onCarrierPush={() => carrierPush(o)} />
                     </div>
                   )}
                 </div>
@@ -105,7 +116,8 @@ export default function MyOrders() {
           ))}
         </div>
       )}
-      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg="retailer_to_customer" onClose={() => setShip(null)} onDone={() => { const o = ship; setShip(null); reloadDetail(o); load(); }} />}
+      {ship && <ShipmentModal orderId={ship.id} orderNo={ship.order_no} leg={ship.existing?.leg || "retailer_to_customer"} existing={ship.existing}
+        onClose={() => setShip(null)} onDone={() => { const o = ship; setShip(null); reloadDetail(o); load(); }} />}
     </div>
   );
 }
