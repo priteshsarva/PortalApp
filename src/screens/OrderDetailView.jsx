@@ -141,6 +141,13 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
                     ? <span style={{ fontSize: 12, color: "#14663a" }}>Booked with Selloship — tracking arrives once a courier is assigned.</span>
                     : <Btn small disabled={busy} onClick={() => onCarrierPush()}>🚚 Book with Selloship</Btn>
                 )}
+                {/* Where to go if they haven't connected a courier yet — the order
+                    page is where the question "how do I ship this?" actually lands. */}
+                {role === "vendor" && onCarrierPush && !order.selloship_connected && (
+                  <span style={{ fontSize: 11.5, color: "#8a93a3" }}>
+                    Ship via Selloship? Connect your account under <strong>Fulfilment, shipping &amp; payments</strong> in this store's settings.
+                  </span>
+                )}
                 {role === "admin" && onMarkShipped && (
                   <Btn small disabled={busy} onClick={() => { if (confirm("Mark this order shipped and release all held funds to the seller(s)?")) onMarkShipped(); }}>Mark shipped (no proof)</Btn>
                 )}

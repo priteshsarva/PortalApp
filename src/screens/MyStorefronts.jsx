@@ -312,6 +312,7 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged, locked = () => fal
     { key: "policies", title: "Policies", required: false, hint: "Optional — shipping, returns, privacy, terms.", render: (v, reg) => <SettingsPanel siteId={site.id} section="policies" registerSave={reg} /> },
     { key: "analytics", title: "Analytics pixels", required: false, hint: "Optional — GA4 & Meta Pixel IDs.", render: (v, reg) => <SettingsPanel siteId={site.id} section="analytics" registerSave={reg} /> },
     { key: "payments", title: "Own payment gateway", required: false, hint: "Optional — your UPI for direct checkout.", render: (v, reg) => <SettingsPanel siteId={site.id} section="payments" site={site} registerSave={reg} /> },
+    { key: "shipping", title: "Courier account", required: false, hint: "Optional — connect Selloship to book parcels from an order.", render: () => <Card><SelloshipCard site={site} bare /></Card> },
     { key: "domain", title: "Custom domain", required: false, lockFlag: "custom_domain", hint: "Optional — use your own domain.", render: () => <CustomDomainPanel site={site} onChanged={onChanged} /> },
     { key: "golive", title: "Submit & go live", required: false, hint: "Pick a plan, submit for approval, and pay to go live.", render: () => <GoLivePanel site={site} onChanged={onChanged} /> },
   ];
@@ -1895,8 +1896,8 @@ function FulfilmentPanel({ site }) {
   async function savePm(v) { setPm(v); setMsg(""); setErr(null); try { await api.setPayoutMode(site.id, v); setMsg("Saved."); } catch (e) { setErr(e); setPm(site.payout_mode || "direct"); } }
   return (
     <Card>
-      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Fulfilment &amp; payments</div>
-      <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>How wholesale orders are shipped, and where buyer payments go.</div>
+      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Fulfilment, shipping &amp; payments</div>
+      <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>How wholesale orders are shipped, where buyer payments go, and which courier account books your parcels.</div>
       {err && <ErrorNote error={err} />}
       {msg && <div style={{ fontSize: 12, color: "#2c6e2c", marginBottom: 8 }}>{msg}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -1924,7 +1925,7 @@ function FulfilmentPanel({ site }) {
 // Connect the vendor's OWN Selloship account, so their rates apply and Selloship
 // remits their COD to them. The password is used once to fetch their vendor id and
 // is not stored — say so, because we are asking for a third-party password.
-function SelloshipCard({ site }) {
+function SelloshipCard({ site, bare = false }) {
   const [st, setSt] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -1945,8 +1946,8 @@ function SelloshipCard({ site }) {
   }
 
   return (
-    <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid #eef1f6" }}>
-      <div style={{ fontWeight: 700, fontSize: 13 }}>Ship through Selloship</div>
+    <div style={bare ? {} : { marginTop: 18, paddingTop: 14, borderTop: "1px solid #eef1f6" }}>
+      <div style={{ fontWeight: 700, fontSize: bare ? 15 : 13 }}>Ship through Selloship</div>
       <div style={{ fontSize: 12, color: "#6b7688", margin: "3px 0 10px" }}>
         Connect your own Selloship account and you can book an order's parcels from its order page.
         Your rates and your COD remittance — nothing routes through us. Your password is used once to
