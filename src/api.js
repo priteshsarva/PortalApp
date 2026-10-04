@@ -142,6 +142,14 @@ export const api = {
   selloshipDisconnect: (siteId) => req(`/portal/hosted-sites/${siteId}/selloship/connect`, { method: "DELETE" }),
   selloshipPush: (siteId, orderId) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/selloship-push`, { method: "POST" }),
   selloshipAutoPush: (siteId, auto_push) => req(`/portal/hosted-sites/${siteId}/selloship/auto-push`, { method: "PUT", body: { auto_push } }),
+
+  // ---- JD Web & Ship: same shape, plus the status webhook JD pushes to us ----
+  jdStatus: (siteId) => req(`/portal/hosted-sites/${siteId}/jd`),
+  jdConnect: (siteId, body) => req(`/portal/hosted-sites/${siteId}/jd/connect`, { method: "POST", body }),
+  jdDisconnect: (siteId) => req(`/portal/hosted-sites/${siteId}/jd/connect`, { method: "DELETE" }),
+  jdAutoPush: (siteId, auto_push) => req(`/portal/hosted-sites/${siteId}/jd/auto-push`, { method: "PUT", body: { auto_push } }),
+  jdRegisterWebhook: (siteId) => req(`/portal/hosted-sites/${siteId}/jd/register-webhook`, { method: "POST" }),
+  jdPush: (siteId, orderId) => req(`/portal/hosted-sites/${siteId}/orders/${orderId}/jd-push`, { method: "POST" }),
   myShipments: () => req("/portal/shipments"),
   shipmentsByOrder: (orderId) => req(`/portal/shipments?order_id=${encodeURIComponent(orderId)}`),
   adminShipments: (status) => req(`/portal/admin/shipments${status ? `?status=${encodeURIComponent(status)}` : ""}`),

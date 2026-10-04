@@ -312,7 +312,7 @@ function StoreSetupWizard({ site, srcVer, bumpSrc, onChanged, locked = () => fal
     { key: "policies", title: "Policies", required: false, hint: "Optional — shipping, returns, privacy, terms.", render: (v, reg) => <SettingsPanel siteId={site.id} section="policies" registerSave={reg} /> },
     { key: "analytics", title: "Analytics pixels", required: false, hint: "Optional — GA4 & Meta Pixel IDs.", render: (v, reg) => <SettingsPanel siteId={site.id} section="analytics" registerSave={reg} /> },
     { key: "payments", title: "Own payment gateway", required: false, hint: "Optional — your UPI for direct checkout.", render: (v, reg) => <SettingsPanel siteId={site.id} section="payments" site={site} registerSave={reg} /> },
-    { key: "shipping", title: "Courier account", required: false, hint: "Optional — connect Selloship to book parcels from an order.", render: () => <Card><SelloshipCard site={site} bare /></Card> },
+    { key: "shipping", title: "Courier accounts", required: false, hint: "Optional — connect Selloship or JD Web & Ship to book parcels.", render: () => <Card><CourierAccounts site={site} bare /></Card> },
     { key: "domain", title: "Custom domain", required: false, lockFlag: "custom_domain", hint: "Optional — use your own domain.", render: () => <CustomDomainPanel site={site} onChanged={onChanged} /> },
     { key: "golive", title: "Submit & go live", required: false, hint: "Pick a plan, submit for approval, and pay to go live.", render: () => <GoLivePanel site={site} onChanged={onChanged} /> },
   ];
@@ -1917,48 +1917,92 @@ function FulfilmentPanel({ site }) {
             : !site.allow_payout_routing && <div style={{ fontSize: 11.5, color: "#8a93a3", marginTop: 4 }}>Payment routing needs a higher plan. Direct-to-UPI is active.</div>}
         </Field>
       </div>
-      <SelloshipCard site={site} />
+      <CourierAccounts site={site} />
     </Card>
   );
 }
 
-// Connect the vendor's OWN Selloship account, so their rates apply and Selloship
-// remits their COD to them. The password is used once to fetch their vendor id and
-// is not stored — say so, because we are asking for a third-party password.
-function SelloshipCard({ site, bare = false }) {
+// The carriers a store can connect. Each is the vendor's OWN account, so their
+// negotiated rates apply and COD is remitted to them, not to the platform.
+// `keeps` is shown verbatim because we are asking for a third-party password, and
+// the two carriers genuinely differ: Selloship derives its key from vendor_id +
+// email, while JD can only renew an expiring token with the password itself.
+const CARRIERS = [
+  {
+    key: "selloship", label: "Selloship",
+    blurb: "Book an order's parcels with your own Selloship account, straight from the order page.",
+    keeps: "Your password is used once to fetch your vendor id and is not saved.",
+    api: {
+      status: (id) => api.selloshipStatus(id),
+      connect: (id, body) => api.selloshipConnect(id, body),
+      disconnect: (id) => api.selloshipDisconnect(id),
+      auto: (id, on) => api.selloshipAutoPush(id, on),
+    },
+  },
+  {
+    key: "jd", label: "JD Web & Ship",
+    blurb: "JD pushes delivery updates back to us, so your buyers see “out for delivery”, not just a tracking number.",
+    keeps: "JD's token expires, so your password is stored encrypted in order to renew it.",
+    api: {
+      status: (id) => api.jdStatus(id),
+      connect: (id, body) => api.jdConnect(id, body),
+      disconnect: (id) => api.jdDisconnect(id),
+      auto: (id, on) => api.jdAutoPush(id, on),
+    },
+  },
+];
+
+function CourierAccounts({ site, bare = false }) {
+  return (
+    <div style={bare ? {} : { marginTop: 18, paddingTop: 14, borderTop: "1px solid #eef1f6" }}>
+      <div style={{ fontWeight: 700, fontSize: bare ? 15 : 13 }}>Courier accounts</div>
+      <div style={{ fontSize: 12, color: "#6b7688", margin: "3px 0 2px" }}>
+        Connect the courier you already ship with. Your rates, your COD remittance — nothing routes through us.
+      </div>
+      {CARRIERS.map((c) => <CarrierCard key={c.key} site={site} carrier={c} />)}
+    </div>
+  );
+}
+
+function CarrierCard({ site, carrier }) {
   const [st, setSt] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
-  useEffect(() => { api.selloshipStatus(site.id).then(setSt).catch(() => setSt({ connected: false })); }, [site.id]);
+  const { label, api: cx } = carrier;
+
+  useEffect(() => { cx.status(site.id).then(setSt).catch(() => setSt({ connected: false })); }, [site.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function connect() {
     setBusy(true); setErr(null);
-    try { setSt(await api.selloshipConnect(site.id, { email: email.trim(), password })); setPassword(""); }
-    catch (e) { setErr(e); } finally { setBusy(false); }
+    try {
+      const r = await cx.connect(site.id, { email: email.trim(), password });
+      setPassword("");
+      setSt(r);
+      // JD can connect but refuse the status webhook — say so instead of looking fine.
+      if (r.warning) setErr(new Error(r.warning));
+    } catch (e) { setErr(e); } finally { setBusy(false); }
   }
   async function disconnect() {
-    if (!confirm("Disconnect Selloship? Parcels already booked keep tracking normally.")) return;
+    if (!confirm(`Disconnect ${label}? Parcels already booked keep tracking normally.`)) return;
     setBusy(true); setErr(null);
-    try { setSt(await api.selloshipDisconnect(site.id)); } catch (e) { setErr(e); } finally { setBusy(false); }
+    try { setSt(await cx.disconnect(site.id)); } catch (e) { setErr(e); } finally { setBusy(false); }
   }
   async function setAuto(on) {
     if (on === st.auto_push) return;
-    if (on && !confirm("Book parcels automatically as soon as a payment is confirmed? This spends your Selloship balance without asking each time.")) return;
+    if (on && !confirm(`Book parcels automatically as soon as a payment is confirmed? This spends your ${label} balance without asking each time.`)) return;
     setBusy(true); setErr(null);
-    try { const r = await api.selloshipAutoPush(site.id, on); setSt((s) => ({ ...s, auto_push: r.auto_push })); }
+    try { const r = await cx.auto(site.id, on); setSt((s) => ({ ...s, auto_push: r.auto_push })); }
     catch (e) { setErr(e); } finally { setBusy(false); }
   }
 
   return (
-    <div style={bare ? {} : { marginTop: 18, paddingTop: 14, borderTop: "1px solid #eef1f6" }}>
-      <div style={{ fontWeight: 700, fontSize: bare ? 15 : 13 }}>Ship through Selloship</div>
+    <div style={{ marginTop: 12, border: "1px solid #e6e9f0", borderRadius: 10, padding: "12px 13px" }}>
+      <div style={{ fontWeight: 700, fontSize: 13 }}>{label}</div>
       <div style={{ fontSize: 12, color: "#6b7688", margin: "3px 0 10px" }}>
-        Connect your own Selloship account and you can book an order's parcels from its order page.
-        Your rates and your COD remittance — nothing routes through us. Your password is used once to
-        fetch your vendor id and is not saved.
+        {carrier.blurb} {carrier.keeps}
       </div>
       {err && <ErrorNote error={err} />}
       {!st ? <div style={{ fontSize: 12, color: "#9aa3b2" }}>Checking…</div>
@@ -1973,7 +2017,7 @@ function SelloshipCard({ site, bare = false }) {
                 whether we also book it for them the moment payment is confirmed. */}
             <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
               {[
-                { on: false, label: "Manual", hint: "You press “Book with Selloship” on each order." },
+                { on: false, label: "Manual", hint: `You press “Book with ${label}” on each order.` },
                 { on: true, label: "Automatic", hint: "Booked the moment a payment is confirmed." },
               ].map((o) => (
                 <button key={o.label} onClick={() => setAuto(o.on)} disabled={busy}
@@ -1991,14 +2035,14 @@ function SelloshipCard({ site, bare = false }) {
             </div>
             {st.auto_push && (
               <div style={{ fontSize: 11.5, color: "#8a6100", marginTop: 7 }}>
-                Parcels are booked without asking, which spends your Selloship balance. We'll notify you if a booking fails.
+                Parcels are booked without asking, which spends your {label} balance. We'll notify you if a booking fails.
               </div>
             )}
           </>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 10, alignItems: "end" }}>
-            <Field label="Selloship email"><input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" /></Field>
-            <Field label="Selloship password"><input style={inputStyle} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" /></Field>
+            <Field label={`${label} email`}><input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" /></Field>
+            <Field label={`${label} password`}><input style={inputStyle} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" /></Field>
             <Btn tone="lime" onClick={connect} disabled={busy || !email.trim() || !password}>{busy ? "Connecting…" : "Connect"}</Btn>
           </div>
         )}
@@ -2043,12 +2087,12 @@ function OrdersPanel({ siteId }) {
   async function reloadDetail(id) {
     try { const r = await api.hostedSiteOrder(siteId, id); setDetail((d) => ({ ...d, [id]: r })); } catch { /* ignore */ }
   }
-  // Book this order's parcels with the store's own Selloship account.
-  async function carrierPush(id) {
+  // Book this order's parcels with one of the store's own courier accounts.
+  async function carrierPush(id, carrier) {
     try {
-      const r = await api.selloshipPush(siteId, id);
-      const fails = (r.failed || []).map((f) => `${f.parcel}: ${f.error}`).join("\n");
-      alert(`Booked ${r.booked?.length || 0} parcel(s) with Selloship.` + (fails ? `\n\nNot booked:\n${fails}` : ""));
+      const r = carrier === "jd" ? await api.jdPush(siteId, id) : await api.selloshipPush(siteId, id);
+      const fails = (r.failed || []).map((f) => `${f.parcel || f.item}: ${f.error}`).join("\n");
+      alert(`Booked ${r.booked?.length || 0} parcel(s).` + (fails ? `\n\nNot booked:\n${fails}` : ""));
       reloadDetail(id);
     } catch (e) { alert(e.message); }
   }
@@ -2091,7 +2135,7 @@ function OrdersPanel({ siteId }) {
                         onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o.id, s)}
                         onShip={() => setShip({ ...o, existing: null })}
                         onTracking={(s) => setShip({ ...o, existing: s })}
-                        onCarrierPush={() => carrierPush(o.id)} />
+                        onCarrierPush={(c) => carrierPush(o.id, c)} />
                       {o.payment_status !== "verified" && (
                         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 12, fontSize: 12, color: "#6b7688" }}>
                           <span>Fulfilment:</span>

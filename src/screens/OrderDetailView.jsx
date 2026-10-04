@@ -134,18 +134,22 @@ export default function OrderDetailView({ data, role = "vendor", onVerify, onSta
                 {role === "vendor" && order.fulfilment_mode === "direct_to_customer" && (
                   <span style={{ fontSize: 12, color: "#2b5bb5" }}>The wholesaler ships this order directly.</span>
                 )}
-                {/* Book the parcels with the vendor's own Selloship account. Safe to
-                    press twice — already-booked parcels are skipped server-side. */}
-                {role === "vendor" && onCarrierPush && order.selloship_connected && (
-                  shipments.some((s) => s.courier === "Selloship")
-                    ? <span style={{ fontSize: 12, color: "#14663a" }}>Booked with Selloship — tracking arrives once a courier is assigned.</span>
-                    : <Btn small disabled={busy} onClick={() => onCarrierPush()}>🚚 Book with Selloship</Btn>
-                )}
-                {/* Where to go if they haven't connected a courier yet — the order
-                    page is where the question "how do I ship this?" actually lands. */}
-                {role === "vendor" && onCarrierPush && !order.selloship_connected && (
+                {/* Book the parcels with whichever courier accounts the store has
+                    connected. Safe to press twice — already-booked parcels are
+                    skipped server-side, so this doubles as the retry. */}
+                {role === "vendor" && onCarrierPush && [
+                  { key: "selloship", label: "Selloship", on: order.selloship_connected, after: "tracking arrives once a courier is assigned." },
+                  { key: "jd", label: "JD Web & Ship", on: order.jd_connected, after: "JD will push delivery updates as the parcel moves." },
+                ].filter((c) => c.on).map((c) => (
+                  shipments.some((s) => s.courier === c.label)
+                    ? <span key={c.key} style={{ fontSize: 12, color: "#14663a" }}>Booked with {c.label} — {c.after}</span>
+                    : <Btn key={c.key} small disabled={busy} onClick={() => onCarrierPush(c.key)}>🚚 Book with {c.label}</Btn>
+                ))}
+                {/* Where to go if no courier is connected — the order page is where
+                    the question "how do I ship this?" actually lands. */}
+                {role === "vendor" && onCarrierPush && !order.selloship_connected && !order.jd_connected && (
                   <span style={{ fontSize: 11.5, color: "#8a93a3" }}>
-                    Ship via Selloship? Connect your account under <strong>Fulfilment, shipping &amp; payments</strong> in this store's settings.
+                    Shipping through Selloship or JD? Connect the account under <strong>Fulfilment, shipping &amp; payments</strong> in this store's settings.
                   </span>
                 )}
                 {role === "admin" && onMarkShipped && (

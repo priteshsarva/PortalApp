@@ -48,12 +48,12 @@ export default function MyOrders() {
     try { await api.verifyOrderPayment(o.enrollment_id, o.id, utr || undefined); reloadDetail(o); load(); }
     catch (e) { alert(e.message); }
   }
-  // Book this order's parcels with the store's own Selloship account.
-  async function carrierPush(o) {
+  // Book this order's parcels with one of the store's own courier accounts.
+  async function carrierPush(o, carrier) {
     try {
-      const r = await api.selloshipPush(o.enrollment_id, o.id);
-      const fails = (r.failed || []).map((f) => `${f.parcel}: ${f.error}`).join("\n");
-      alert(`Booked ${r.booked?.length || 0} parcel(s) with Selloship.` + (fails ? `\n\nNot booked:\n${fails}` : ""));
+      const r = carrier === "jd" ? await api.jdPush(o.enrollment_id, o.id) : await api.selloshipPush(o.enrollment_id, o.id);
+      const fails = (r.failed || []).map((f) => `${f.parcel || f.item}: ${f.error}`).join("\n");
+      alert(`Booked ${r.booked?.length || 0} parcel(s).` + (fails ? `\n\nNot booked:\n${fails}` : ""));
       reloadDetail(o);
     } catch (e) { alert(e.message); }
   }
@@ -107,7 +107,7 @@ export default function MyOrders() {
                         onVerify={(utr) => verifyPayment(o, utr)} onStatus={(s) => changeStatus(o, s)}
                         onShip={() => setShip({ ...o, existing: null })}
                         onTracking={(s) => setShip({ ...o, existing: s })}
-                        onCarrierPush={() => carrierPush(o)} />
+                        onCarrierPush={(c) => carrierPush(o, c)} />
                     </div>
                   )}
                 </div>
