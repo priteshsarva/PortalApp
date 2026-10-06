@@ -103,6 +103,14 @@ export default function AdminHostedSites() {
                     finally { setBusy(null); }
                   }}>Verify domain</Btn>
                 )}
+                <Btn small tone={s.payment_locked ? "lime" : "ghost"} disabled={busy === s.id}
+                  onClick={() => {
+                    const on = !s.payment_locked;
+                    if (on && !confirm(`Make "${s.store_name || s.slug}" sell via WhatsApp only?\n\nOnline payment is turned off and the vendor can't change payment settings until you unlock it.`)) return;
+                    act(s.id, api.adminSetPaymentLock, s.id, on);
+                  }}>
+                  {s.payment_locked ? "WhatsApp-only: ON ✓" : "Make WhatsApp-only"}
+                </Btn>
                 <Btn small tone="ghost" disabled={busy === s.id} onClick={() => transfer(s.id, s.store_name || s.slug)}>Transfer to client</Btn>
                 <Btn small tone="danger" disabled={busy === s.id} onClick={() => remove(s.id, s.store_name || s.slug)}>Delete</Btn>
               </div>

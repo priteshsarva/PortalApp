@@ -328,6 +328,8 @@ export const api = {
   adminUpdateHostedSite: (id, body) => req(`/portal/admin/hosted-sites/${id}`, { method: "PATCH", body }),
   adminDeleteHostedSite: (id) => req(`/portal/admin/hosted-sites/${id}`, { method: "DELETE" }),
   adminTransferHostedSite: (id, email) => req(`/portal/admin/hosted-sites/${id}/transfer`, { method: "POST", body: { email } }),
+  // Force a store to WhatsApp-only selling + lock the vendor out of payment settings.
+  adminSetPaymentLock: (id, locked) => req(`/portal/admin/hosted-sites/${id}/payment-lock`, { method: "PATCH", body: { locked } }),
   adminDeleteEnrollment: (id) => req(`/portal/admin/enrollments/${id}`, { method: "DELETE" }),
   adminClearEnrollmentMismatch: (id) => req(`/portal/admin/enrollments/${id}/clear-mismatch`, { method: "POST" }),
   adminOrders: (params) => req(`/portal/admin/orders${params ? `?${new URLSearchParams(params)}` : ""}`),

@@ -1390,7 +1390,7 @@ function HomepagePresetPanel({ site }) {
 // so each sub-step safely saves only its own slice.
 const SECTION_FIELDS = {
   basics: ["store_name", "logo_url", "favicon_url", "whatsapp", "email", "phone"],
-  payments: ["upi_id", "upi_name", "payment_position", "checkout"],
+  payments: ["upi_id", "upi_name", "payment_position", "payment_mode", "checkout"],
   theme: ["theme"],
   content: ["announcement", "hero", "about", "reviews"],
   storeinfo: ["address", "social_urls"],
@@ -1522,6 +1522,7 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
       upi_id: s.upi_id || "",
       upi_name: s.upi_name || "",
       payment_position: s.payment_position === "before" ? "before" : "after",
+      payment_mode: s.payment_mode === "whatsapp" ? "whatsapp" : "online",
       checkout: {
         methods: {
           prepaid: s.checkout?.methods?.prepaid ?? true, // prepaid on by default = today's behaviour
@@ -1632,7 +1633,30 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
       </div>
       </>)}
 
-      {show("payments") && (<>
+      {show("payments") && (site?.payment_locked ? (
+        <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 8, padding: "12px 14px", fontSize: 13, color: "#7c2d12" }}>
+          <b>Selling via WhatsApp only</b> — set by your platform admin.
+          <div style={{ fontSize: 12, color: "#9a3412", marginTop: 4, lineHeight: 1.5 }}>
+            Buyers place orders and finalise payment with you on WhatsApp. Online payment settings are managed by the admin and can't be changed here.
+          </div>
+        </div>
+      ) : (<>
+      <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>How buyers pay</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, cursor: "pointer" }}>
+          <input type="radio" name="paymode" style={{ marginTop: 2 }} checked={form.payment_mode !== "whatsapp"} onChange={() => set("payment_mode", "online")} />
+          <span><b>Online checkout</b> — UPI / gateway / COD options below</span>
+        </label>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, cursor: "pointer" }}>
+          <input type="radio" name="paymode" style={{ marginTop: 2 }} checked={form.payment_mode === "whatsapp"} onChange={() => set("payment_mode", "whatsapp")} />
+          <span><b>Buy with WhatsApp only</b> — no online payment; buyers confirm the order with you on WhatsApp</span>
+        </label>
+      </div>
+      {form.payment_mode === "whatsapp" && (
+        <div style={{ fontSize: 12, color: "#8a6100", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "8px 10px", marginBottom: 12 }}>
+          WhatsApp-only is on — the UPI and checkout options below are ignored. Just make sure your WhatsApp number (in Basics) is set.
+        </div>
+      )}
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>UPI payments</div>
       <div style={{ fontSize: 12, color: "#6b7688", marginBottom: 10 }}>
         Your own UPI ID — any app works (PhonePe, Google Pay, Paytm). At checkout, buyers see a QR + “Pay in UPI app” button that pays you directly, then send you the payment screenshot on WhatsApp to confirm. Leave blank to keep WhatsApp-only checkout.
@@ -1698,7 +1722,7 @@ function SettingsPanel({ siteId, section, onValid, site, registerSave }) {
           </Field>
         </div>
       )}
-      </>)}
+      </>))}
 
       {show("theme") && (<>
       <div style={{ fontWeight: 700, fontSize: 13, margin: "18px 0 6px" }}>Colour palette</div>
