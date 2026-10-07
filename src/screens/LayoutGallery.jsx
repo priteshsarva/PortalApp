@@ -15,6 +15,7 @@ const TEMPLATES = [
   { id: "chrono", name: "Chrono", tag: "Luxe / watches", description: "The bold Velocity layout in a gold + deep-blue palette, built watches-first — floating watch shots, movement/crystal breakdown." },
   { id: "redline", name: "Redline", tag: "Automotive / gadgets", description: "Aggressive red-and-black motorsport look — dark hero, flash sale, top categories, popular grid. Best for car parts, gadgets & performance gear." },
   { id: "haven", name: "Haven", tag: "Furniture / décor", description: "Warm editorial magazine look — cream + espresso, serif headings, split hero, room grid, lifestyle gallery. Best for furniture, décor & lifestyle." },
+  { id: "carry", name: "Carry", tag: "Bags / travel", description: "Clean white shop with charcoal type and a single red sale accent — cinematic hero slider, dense 4-up product grid with load-more, lookbook collage, bestsellers + campaign shot. Best for bags, luggage & everyday carry." },
 ];
 
 // Preview window height and the tall iframe we slide up inside it on hover, so
