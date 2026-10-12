@@ -1312,6 +1312,7 @@ function HomepagePresetPanel({ site }) {
     { id: "redline", name: "Redline (automotive / performance)", description: "Aggressive red-and-black motorsport look — dark hero, flash sale, top categories, most popular grid, red campaign banner. No product repeats. Best for car parts, gadgets & performance gear.", section_count: "auto" },
     { id: "haven", name: "Haven (furniture / home décor)", description: "Warm editorial magazine look — cream + espresso, serif headings, split hero, category strip, asymmetric feature sections, room grid, lifestyle gallery. No product repeats. Best for furniture, décor & lifestyle.", section_count: "auto" },
     { id: "carry", name: "Carry (bags / travel)", description: "Clean white shop, charcoal typography and a single red sale accent — cinematic hero slider, dense 4-up product grid with load-more, category lookbook collage, bestsellers beside a campaign shot. No product repeats. Best for bags, luggage & everyday carry.", section_count: "auto" },
+    { id: "drip", name: "Drip (sneakers / streetwear)", description: "Premium minimalist monochrome look — black/white/grey UI, bold condensed Anton headlines, floating sneaker hero, shop-by-brand strip, swipeable best-sellers, bordered product grid. No product repeats. Best for sneakers & streetwear.", section_count: "auto" },
   ];
 
   return (
