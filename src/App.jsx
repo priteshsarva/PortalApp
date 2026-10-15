@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   LayoutDashboard, Globe, Tags, PlusCircle, Plug, Inbox, ShieldCheck, Users,
   Megaphone, ScrollText, BarChart3, Search, Store, Receipt, LogOut, KeyRound, Database,
@@ -118,6 +118,14 @@ export default function App() {
     }).catch(() => {});
   }, [user]);
   useEffect(() => { if (nav === "notifications") setUnread(0); }, [nav]);
+
+  // Meta Pixel: the base snippet in index.html fires the first PageView on load;
+  // this re-fires one on each in-app navigation so the SPA journey is tracked.
+  const fbqNavReady = useRef(false);
+  useEffect(() => {
+    if (!fbqNavReady.current) { fbqNavReady.current = true; return; }
+    if (typeof window !== "undefined" && window.fbq) window.fbq("track", "PageView");
+  }, [nav]);
 
   // restore session from a stored token
   useEffect(() => {

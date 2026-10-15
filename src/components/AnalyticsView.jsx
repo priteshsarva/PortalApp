@@ -25,7 +25,9 @@ export function exportAnalyticsCsv(data, nameHint = "analytics") {
     ["Date", "Revenue", "Orders", "Visitors"],
     ...(data.series || []).map((r) => [r.d, r.revenue, r.orders, r.sessions]), [],
     ["Product", "Sold", "Revenue", "Orders"],
-    ...(data.top_products || []).map((p) => [p.name, p.units, p.revenue, p.orders]),
+    ...(data.top_products || []).map((p) => [p.name, p.units, p.revenue, p.orders]), [],
+    ["Search term", "Searches"],
+    ...(data.top_searches || []).map((s) => [s.q, s.n]),
   ];
   const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
   const blob = new Blob([csv], { type: "text/csv" });
@@ -80,6 +82,19 @@ export default function AnalyticsView({ data }) {
                 <span style={{ color: "#6b7688" }}>{num(p.units)} sold</span>
                 <span style={{ fontWeight: 600 }}>{inr(p.revenue)}</span>
               </div>
+            ))}
+          </div>
+        )}
+
+      <div style={{ fontWeight: 600, fontSize: 13, margin: "18px 0 8px" }}>Top searches</div>
+      {(data.top_searches || []).length === 0
+        ? <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>No searches in range.</div>
+        : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {data.top_searches.map((s) => (
+              <span key={s.q} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, background: "#f4f6fa", border: "1px solid #e6e9f0", borderRadius: 999, padding: "4px 10px" }}>
+                {s.q}<span style={{ color: "#8a93a3", fontWeight: 600 }}>{num(s.n)}</span>
+              </span>
             ))}
           </div>
         )}
