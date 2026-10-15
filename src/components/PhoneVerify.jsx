@@ -5,6 +5,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, setToken } from "../api.js";
 import { firebaseEnabled, makeRecaptcha, sendPhoneOtp } from "../lib/firebase.js";
+import { fbTrack } from "../lib/pixel.js";
 
 const ink = "#17160F";
 const input = { width: "100%", boxSizing: "border-box", padding: "11px 13px", border: "1px solid #d8dee8", borderRadius: 10, fontSize: 14, outline: "none" };
@@ -49,6 +50,8 @@ export default function PhoneVerify({ onAuthed, onSignIn, cta = "Verify & contin
       if (firebaseEnabled) { const cred = await confirmRef.current.confirm(code); r = await api.firebaseAuth(await cred.user.getIdToken()); }
       else r = await api.otpVerify(mobile, code);
       setToken(r.token);
+      // Meta conversion — only for a genuinely new signup, never on a returning login.
+      if (r.is_new || r.created || r.new_user) fbTrack("CompleteRegistration", { method: "mobile" });
       onAuthed(r);
     } catch (e) { setErr(e.message); } finally { setBusy(false); }
   }

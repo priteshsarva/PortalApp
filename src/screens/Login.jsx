@@ -3,6 +3,7 @@ import { KeyRound } from "lucide-react";
 import { api, setToken } from "../api.js";
 import { C, Field, inputStyle, Btn, ErrorNote } from "../ui.jsx";
 import PhoneVerify from "../components/PhoneVerify.jsx";
+import { fbTrack } from "../lib/pixel.js";
 
 // Browser-friendly generated password, same shape as the server's temp passwords.
 function genPassword() {
@@ -49,6 +50,7 @@ export default function Login({ onLogin, onBack }) {
       if (!token) throw new Error("No token in response");
       setToken(token);
       const user = res.user || (await api.me()).user || (await api.me());
+      if (mode === "signup") fbTrack("CompleteRegistration", { method: "email" }); // Meta conversion
       onLogin(user);
     } catch (err) {
       setError(err);

@@ -7,6 +7,12 @@ import { C } from "../ui.jsx";
 
 export const inr = (n) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
 export const num = (n) => (Number(n) || 0).toLocaleString("en-IN");
+export const dur = (s) => {
+  s = Math.max(0, Math.round(Number(s) || 0));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60), r = s % 60;
+  return r ? `${m}m ${r}s` : `${m}m`;
+};
 
 // Download an analytics object as a CSV (KPIs + funnel + daily series + top
 // products). Works in the portal's real browser (unlike sandboxed artifacts).
@@ -18,7 +24,9 @@ export function exportAnalyticsCsv(data, nameHint = "analytics") {
     ["Metric", "Value"],
     ["Revenue", k.revenue], ["Net revenue", k.net_revenue], ["Orders", k.orders],
     ["Items sold", k.units], ["Avg order value", k.aov], ["Visitors", k.sessions],
-    ["Page views", k.pageviews], ["Conversion %", k.conversion_rate], ["Cancelled", k.cancelled], [],
+    ["Page views", k.pageviews], ["Conversion %", k.conversion_rate], ["Cancelled", k.cancelled],
+    ["Avg visit (sec)", data.engagement?.avg_session_sec], ["Avg time on page (sec)", data.engagement?.avg_page_sec],
+    ["Bounce %", data.engagement?.bounce_pct], [],
     ["Journey", "Count"],
     ["Product views", data.funnel?.view_item], ["Added to cart", data.funnel?.add_to_cart],
     ["Started checkout", data.funnel?.begin_checkout], ["Bought", data.funnel?.purchase], [],
@@ -27,7 +35,13 @@ export function exportAnalyticsCsv(data, nameHint = "analytics") {
     ["Product", "Sold", "Revenue", "Orders"],
     ...(data.top_products || []).map((p) => [p.name, p.units, p.revenue, p.orders]), [],
     ["Search term", "Searches"],
-    ...(data.top_searches || []).map((s) => [s.q, s.n]),
+    ...(data.top_searches || []).map((s) => [s.q, s.n]), [],
+    ["Page", "Views", "Visitors"],
+    ...(data.top_pages || []).map((p) => [p.path, p.views, p.visitors]), [],
+    ["Click", "Count"],
+    ...(data.top_clicks || []).map((c) => [c.label, c.n]), [],
+    ["Shown product", "Impressions"],
+    ...(data.top_impressions || []).map((p) => [p.name || `${p.db_name}/${p.product_id}`, p.impressions]),
   ];
   const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
   const blob = new Blob([csv], { type: "text/csv" });
@@ -41,6 +55,7 @@ export function exportAnalyticsCsv(data, nameHint = "analytics") {
 export default function AnalyticsView({ data }) {
   if (!data) return null;
   const k = data.kpis || {};
+  const e = data.engagement || {};
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 18 }}>
@@ -49,6 +64,8 @@ export default function AnalyticsView({ data }) {
         <Stat label="Avg order" value={inr(k.aov)} />
         <Stat label="Visitors" value={num(k.sessions)} sub={`${num(k.pageviews)} views`} />
         <Stat label="Conversion" value={`${k.conversion_rate || 0}%`} />
+        <Stat label="Avg visit" value={dur(e.avg_session_sec)} sub={`${dur(e.avg_page_sec)} / page`} />
+        <Stat label="Bounce" value={`${e.bounce_pct || 0}%`} />
         <Stat label="Cancelled" value={num(k.cancelled)} />
       </div>
 
@@ -86,6 +103,20 @@ export default function AnalyticsView({ data }) {
           </div>
         )}
 
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18, marginTop: 18 }}>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Top pages</div>
+          <RankList rows={(data.top_pages || []).map((p) => ({ label: p.path, a: `${num(p.views)} views`, b: `${num(p.visitors)} visitors` }))} empty="No page views in range." />
+        </div>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Top clicks</div>
+          <RankList rows={(data.top_clicks || []).map((c) => ({ label: c.label, a: `${num(c.n)} clicks` }))} empty="No clicks tracked yet." />
+        </div>
+      </div>
+
+      <div style={{ fontWeight: 600, fontSize: 13, margin: "18px 0 8px" }}>Most-shown products (impressions)</div>
+      <RankList rows={(data.top_impressions || []).map((p) => ({ label: p.name || `${p.db_name}/${p.product_id}`, a: `${num(p.impressions)} shown` }))} empty="No impressions in range." />
+
       <div style={{ fontWeight: 600, fontSize: 13, margin: "18px 0 8px" }}>Top searches</div>
       {(data.top_searches || []).length === 0
         ? <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>No searches in range.</div>
@@ -99,6 +130,21 @@ export default function AnalyticsView({ data }) {
           </div>
         )}
     </>
+  );
+}
+
+// Compact ranked list: label on the left, one or two small stats on the right.
+function RankList({ rows, empty }) {
+  if (!rows || rows.length === 0) return <div style={{ fontSize: 12.5, color: "#9aa3b2" }}>{empty}</div>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {rows.map((r, i) => (
+        <div key={`${r.label}-${i}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, fontSize: 12.5, padding: "4px 0", borderBottom: "1px solid #f0f2f6" }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.label}>{r.label}</span>
+          <span style={{ color: "#6b7688", whiteSpace: "nowrap", flexShrink: 0 }}>{r.a}{r.b ? ` · ${r.b}` : ""}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -133,6 +179,7 @@ function SeriesChart({ series }) {
 
 function Funnel({ funnel }) {
   const steps = [
+    { label: "Impressions", n: funnel.impression || 0 },
     { label: "Product views", n: funnel.view_item || 0 },
     { label: "Added to cart", n: funnel.add_to_cart || 0 },
     { label: "Started checkout", n: funnel.begin_checkout || 0 },

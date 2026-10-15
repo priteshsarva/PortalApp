@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { api } from "../api.js";
 import { C, PageHead, Card, Btn, Badge, Spinner, ErrorNote } from "../ui.jsx";
 import AnalyticsView, { inr, num, exportAnalyticsCsv } from "../components/AnalyticsView.jsx";
+import SessionExplorer from "../components/SessionExplorer.jsx";
 
 const RANGES = [{ k: "7", label: "7 days" }, { k: "30", label: "30 days" }, { k: "90", label: "90 days" }];
 
@@ -99,7 +100,16 @@ function StoreDrill({ store, range, onBack }) {
         <Btn tone="ghost" small onClick={() => data && exportAnalyticsCsv(data, store.slug || "store")} disabled={!data}>Download CSV</Btn>
       </div>
       <ErrorNote error={error} />
-      {!data ? <Spinner /> : <Card><AnalyticsView data={data} /></Card>}
+      {!data ? <Spinner /> : (
+        <>
+          <Card><AnalyticsView data={data} /></Card>
+          <Card style={{ marginTop: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Visitor sessions</div>
+            <div style={{ fontSize: 12.5, color: "#6b7688", marginBottom: 12 }}>Each anonymous visitor — click one to replay their click-by-click journey.</div>
+            <SessionExplorer siteId={store.id} range={range} fetchSessions={api.adminSiteSessions} fetchSession={api.adminSiteSession} />
+          </Card>
+        </>
+      )}
     </div>
   );
 }
